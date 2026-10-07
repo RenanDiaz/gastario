@@ -124,7 +124,8 @@ Las fases 0 y 1 son independientes y pueden correr en paralelo (dos agentes, dos
   - Dirección: línea `Enviaste por Yappy` → `outflow`; `Te enviaron por Yappy` → `inflow` (texto del recibido pendiente de confirmar con la captura).
   - Monto: primera línea que empieza con `$`, p. ej. `$600.00` (en el HTML trae un espacio final antes de un `<img>`).
   - Contraparte: línea siguiente a `Enviado a` / `Enviado por`. La línea que le sigue es el teléfono (`60138151`); se ignora en v1.
-  - Fecha: línea siguiente a `Fecha`. Mensaje: línea siguiente a `Mensaje`, salvo que sea `Confirmación`. Confirmación: regex `[A-Z]{5}-\d{8}` sobre todo el texto.
+  - Fecha: línea siguiente a `Fecha`. Mensaje: línea siguiente a `Mensaje`, salvo que sea `Confirmación` (verificado: sin mensaje el HTML trae `<strong></strong>` vacío, que no genera línea). Confirmación: regex `[A-Z]{5}-\d{8}` sobre todo el texto.
+  - El template del correo recibido es un archivo distinto al del enviado (tabs en vez de espacios, otra numeración de líneas, el mensaje en la misma línea que el `<strong>`). Nada en el parser puede depender de la posición o el formato del HTML fuente.
   Reglas de estado:
   - `failed`: no se pudo determinar dirección **o** monto.
   - `partial`: dirección y monto presentes, pero falta alguno de contraparte, confirmación o fecha. Cada faltante va a `parseIssues`.
@@ -141,6 +142,7 @@ Los cuerpos deben ser **reales y capturados desde Shortcuts**, no copiados desde
 
 1. En la automatización de Yappy actual, dentro del `Repeat` y antes del regex, agregar `Save File` con el mismo `Content` que se pasa al parseo. Destino `iCloud Drive/Shortcuts/yappy-raw/`, nombre `yappy-{Current Date:yyyyMMdd-HHmmss}.txt`, sin preguntar dónde guardar, sin sobrescribir.
 2. Esperar un correo de cada tipo (enviado con mensaje, enviado sin mensaje, recibido).
+2b. **Verificar qué recibe un parámetro `String`.** `Save File` guarda `Content` como `.html` aunque el nombre diga `.txt`: Shortcuts lo tipa como HTML. Un parámetro `String` de App Intent recibe lo que resulte de la coerción de ese item a texto, que puede ser el HTML fuente o texto plano renderizado. Para saberlo sin la app: agregar una acción `Text` cuyo contenido sea la variable `Content` interpolada, y guardar ese `Text` con `Save File`. Esa interpolación aplica la misma coerción que un parámetro `String`. Si el archivo resultante empieza con `<!DOCTYPE html`, el intent recibe HTML; si trae las líneas `Enviaste por Yappy / $600.00 / …`, recibe texto plano. Los fixtures reales son **ese** archivo, no el `.html` directo. La confirmación definitiva es `rawContent` en la Fase 2.
 3. En la Mac, verificar que es HTML (`head -1` empieza con `<!DOCTYPE html`) y localizar los espacios especiales: `LC_ALL=C grep -n $'\xC2\xA0' archivo.txt | cut -c1-60`.
 4. Anonimizar según la regla de arriba y copiar a la carpeta de fixtures con extensión `.html`.
 
@@ -357,7 +359,8 @@ Cuando exista la vista de cuerpo crudo (Fase 4), se comparan contra `rawContent`
 | # | Pregunta | Bloquea |
 |---|---|---|
 | Q1 | Bundle id y Team ID para el App Group y el ubiquity container. | F0 |
-| Q2 | ~~Tres cuerpos reales de correo Yappy.~~ **Capturados** (2 enviados, 1 recibido, 7 oct 2026). Falta confirmar: texto exacto del encabezado del recibido (`Te enviaron por Yappy`?), etiqueta de contraparte en el recibido (`Enviado por`?), y cómo se ve la fila `Mensaje` cuando no hay mensaje. | Gate F1 |
+| Q2 | ~~Tres cuerpos reales de correo Yappy.~~ **Resuelto** (2 enviados, 1 recibido, 7 oct 2026). Confirmado: `Te enviaron por Yappy`, `Enviado por`, mensaje vacío = `<strong></strong>`, montos `$600.00 ` / `$0.01 ` con espacio final. Falta un caso real con coma (`$1,250.00`); hasta entonces `amount-with-comma` es sintético. | — |
+| Q6 | ¿El parámetro `String` de `LogYappyEmailIntent` recibe el HTML fuente o texto plano? Ver paso 2b del procedimiento de fixtures. El extractor soporta ambos caminos, pero el gate de la Fase 1 exige fixtures del camino real. | Gate F1 |
 | Q3 | ~~Formato exacto del `Amount` que entrega el trigger de Wallet.~~ **Resuelto:** `$1.57`. | — |
 | Q4 | Confirmar C1–C9 o indicar cuáles cambian. | F0 (C1, C2), F5, F6 |
 | Q5 | ¿La lista muestra montos de `partial` con `amount = 0` como `$0.00` o como "—"? Default: "—" con el badge de revisión. | F0 |
