@@ -25,6 +25,7 @@ Huecos encontrados al convertir el intent en fases. Cada uno tiene una decisión
 | C7 | Un QR que no contenga URL no cabe en `kind: link`. | Se rechaza con mensaje "El QR no contiene un link". Los QR de factura electrónica de la DGI son URLs; si aparece un caso real distinto, se amplía en v1.1. | 6 |
 | C8 | Imágenes sin límite inflan el almacenamiento externo. | Fotos se guardan como JPEG calidad 0.8, lado mayor máximo 2048 px. PDFs sin tocar. | 6 |
 | C9 | El resumen mensual no dice qué mes ni qué zona horaria. | Mes calendario actual en `America/Panama`. Neto = entradas − salidas. Incluye todos los `parseStatus`. | 4 |
+| C11 | Yappy también envía **pagos a comercio** (`Pagaste por Yappy` / `Pagado a`, sin teléfono). El modelo no distingue una transferencia a persona de un pago a comercio, y la distinción afecta el texto de la notificación, los filtros y las categorías de v2. **Decisión abierta en otra sesión; este spec se alinea a lo que se decida allí.** | Recomendación: `counterpartyKind: person \| merchant \| unknown` en `Movement`, transversal a fuentes (`card` → `merchant`; Yappy transferencia → `person`; Yappy pago → `merchant`; `manual` → lo elige quien lo crea, default `unknown`). Alternativa más chica: `yappyKind: transfer \| payment` solo para Yappy. La primera sirve a filtros y categorías cruzando fuentes; la segunda es menos campo pero no generaliza. | 0, 1, 3, 4 |
 | C10 | El item `Content` del trigger de Mail está tipado como HTML (`Save File` lo guarda como `.html`), pero la coerción a `String` que recibe el intent entrega **texto plano** con la forma que asume `INTENT.md` (verificado 7 oct 2026 con la interpolación en una acción `Text`). | Sin cambio al parseo. Guardia defensiva: si `rawContent` contiene `<html` o `<!DOCTYPE`, el parser devuelve `failed` sin intentar nada más; el movimiento queda con el crudo y se arregla por re-parseo si Apple cambia la coerción. No se construye extractor de HTML en v1. | 1 |
 
 ## 3. Arquitectura y convenciones (aplican a todas las fases)
@@ -139,9 +140,9 @@ Las fases 0 y 1 son independientes y pueden correr en paralelo (dos agentes, dos
 - `YappyDateParser.parse(_:) -> Date?`: regex día/mes/año/hora/minuto/`a|p`; mapa `ene…dic` + `sept`; `DateComponents` con `America/Panama`. Sin `DateFormatter`.
 - `YappyEmailParser.parse(_:) -> ParsedYappy`: aplica la tabla de `INTENT.md` sobre las líneas normalizadas, con estos detalles verificados en capturas reales:
   - Guardia C10: si el texto contiene `<html` o `<!DOCTYPE` → `failed` de inmediato.
-  - Dirección: línea `Enviaste por Yappy` → `outflow`; `Te enviaron por Yappy` → `inflow`.
+  - Dirección y tipo (C11): `Enviaste por Yappy` → `outflow` + transferencia; `Pagaste por Yappy` → `outflow` + pago a comercio; `Te enviaron por Yappy` → `inflow` + transferencia. Encabezado no reconocido → `failed` con issue `direction`, aunque el resto parsee. Antes de implementar, revisar la taxonomía real de asuntos en el corpus de Mail (Q7).
   - Monto: primera línea que empieza con `$`; trae espacio final (`$40.00 `), el `trim` del normalizador lo quita.
-  - Contraparte: primera línea no vacía después de `Enviado a` / `Enviado por`. La siguiente es el teléfono (`68530270`); se ignora en v1.
+  - Contraparte: primera línea no vacía después de `Enviado a` / `Enviado por` / `Pagado a`. En transferencias la siguiente línea es el teléfono (`68530270`); en pagos a comercio no hay teléfono. El parser no asume ninguna de las dos: ignora lo que haya entre la contraparte y `Fecha`.
   - Fecha: primera línea no vacía después de `Fecha`. Mensaje: primera línea no vacía después de `Mensaje`, salvo que sea `Confirmación`. Confirmación: regex `[A-Z]{5}-\d{8}` sobre todo el texto.
   Reglas de estado:
   - `failed`: no se pudo determinar dirección **o** monto.
@@ -150,7 +151,7 @@ Las fases 0 y 1 son independientes y pueden correr en paralelo (dos agentes, dos
 - Tipos de salida (`ParsedCard`, `ParsedYappy`, `ParseStatus`, `ParseIssue`, `Direction`) viven aquí y `GastarioCore` los reexporta o mapea.
 
 **Fixtures.** `Tests/GastarioParsingTests/Fixtures/Yappy/`. Archivos `.txt` con el texto plano **tal como lo recibe el intent** (ver procedimiento):
-- `sent-with-message.txt`, `sent-without-message.txt`, `received.txt`, `amount-with-comma.txt`.
+- `sent-with-message.txt`, `sent-without-message.txt`, `received.txt`, `paid-merchant.txt`, `amount-with-comma.txt`. El de pago a comercio ya existe por el camino de Mail y es, además, el caso real de `Mensaje` vacío.
 - `unexpected-format.txt` (correo que no es de Yappy) y `html-body.txt` (el HTML crudo de un correo real, para la guardia C10).
 - Variantes de fecha con U+00A0 / U+202F: si las capturas reales ya las traen en la línea de fecha, son fixtures; si no, se generan **en el test** reemplazando los espacios de esa línea.
 - **Corpus desde Mail** (`Mail/*.mail.txt`): correos anteriores exportados desde Mail.app con *File → Save As… → Plain Text*. Verificado que, tras normalizar, producen las mismas líneas que el camino de Shortcuts; difieren solo en espacios finales, un espacio inicial en el teléfono y líneas con un solo U+00A0. Reglas:
@@ -179,7 +180,8 @@ Cuando exista la vista de cuerpo crudo (Fase 4), se comparan contra `rawContent`
 
 **Gate de salida.**
 - [ ] `swift test` verde en `GastarioParsing` en macOS **y** en Linux (CI o contenedor).
-- [ ] Al menos 3 fixtures de Yappy son reales (enviado con mensaje, sin mensaje, recibido).
+- [ ] Al menos 4 fixtures de Yappy son reales por el camino de Shortcuts (enviado con mensaje, sin mensaje, recibido, pago a comercio).
+- [ ] Taxonomía de asuntos del corpus de Mail revisada (Q7); cada tipo de correo tiene fixture o está documentado como fuera de alcance.
 - [ ] Ningún test marcado `SYNTHETIC` para los casos que ya tienen fixture real.
 
 ---
@@ -388,6 +390,8 @@ Cuando exista la vista de cuerpo crudo (Fase 4), se comparan contra `rawContent`
 | Q1 | Bundle id y Team ID para el App Group y el ubiquity container. | F0 |
 | Q2 | ~~Tres cuerpos reales de correo Yappy.~~ **Resuelto en parte** (7 oct 2026). Confirmado en texto plano: encabezados `Enviaste por Yappy` / `Te enviaron por Yappy`, etiquetas `Enviado a` / `Enviado por`, montos con espacio final, formato de fecha `07 oct 2026 12:30 p. m.`. Hay fixture real de enviado con mensaje; faltan en texto plano el enviado sin mensaje y el recibido (ya se capturan solos con la automatización). Falta un caso real con coma (`$1,250.00`); hasta entonces `amount-with-comma` es sintético. | Gate F1 |
 | Q6 | ~~¿El parámetro `String` recibe HTML o texto plano?~~ **Resuelto:** texto plano. Ver C10. | — |
+| Q7 | ¿Qué tipos de correo manda Yappy en total? Conocemos `¡Enviaste un Yappy!`, `¡Pagaste por Yappy!` y el recibido. Pueden existir solicitudes, devoluciones, rechazos o pagos recibidos. Sacar la lista del corpus de Mail: `grep -h '^Subject:' exportado-lote.txt \| sort \| uniq -c`. Cada asunto distinto se clasifica como movimiento (fixture) o como no-movimiento (el parser lo marca `failed` y el detalle lo muestra; se borra a mano). | Gate F1 |
+| Q8 | Decisión de C11 (tomada en otra sesión): nombre y valores del campo, y si `manual` lo pide en el formulario. Afecta modelo (F0), parser (F1), textos de notificación (F3) y filtros (F4). | F0 |
 | Q3 | ~~Formato exacto del `Amount` que entrega el trigger de Wallet.~~ **Resuelto:** `$1.57`. | — |
 | Q4 | Confirmar C1–C9 o indicar cuáles cambian. | F0 (C1, C2), F5, F6 |
 | Q5 | ¿La lista muestra montos de `partial` con `amount = 0` como `$0.00` o como "—"? Default: "—" con el badge de revisión. | F0 |
