@@ -153,7 +153,12 @@ Las fases 0 y 1 son independientes y pueden correr en paralelo (dos agentes, dos
 - `sent-with-message.txt`, `sent-without-message.txt`, `received.txt`, `amount-with-comma.txt`.
 - `unexpected-format.txt` (correo que no es de Yappy) y `html-body.txt` (el HTML crudo de un correo real, para la guardia C10).
 - Variantes de fecha con U+00A0 / U+202F: si las capturas reales ya las traen en la línea de fecha, son fixtures; si no, se generan **en el test** reemplazando los espacios de esa línea.
-- Antes de commitear, anonimizar **solo** nombre de la contraparte, teléfono y código de confirmación, conservando longitud y formato (`[A-Z]{5}-\d{8}`). Nada más se toca.
+- **Corpus desde Mail** (`Mail/*.mail.txt`): correos anteriores exportados desde Mail.app con *File → Save As… → Plain Text*. Verificado que, tras normalizar, producen las mismas líneas que el camino de Shortcuts; difieren solo en espacios finales, un espacio inicial en el teléfono y líneas con un solo U+00A0. Reglas:
+  - Quitar la cabecera `From/Subject/Date/To` antes de guardar: `sed '1,/^$/d' exportado.txt > nombre.mail.txt`. El intent nunca la recibe y el `Subject` contiene "Enviaste".
+  - Sirven para amplitud (montos con coma, recibidos sin mensaje, otros meses del año, variantes del template), **no** sustituyen a los tres fixtures del camino de Shortcuts que exige el gate.
+  - Un correo viejo con otro template que no parsee se guarda en `Mail/legacy/` con el test marcado como `legacy`: es insumo para la importación de v1.1, no bug de v1.
+- **Test de equivalencia**: `sent-with-message.txt` (Shortcuts) y `sent-with-message.mail.txt` (Mail) son el mismo Yappy. El test exige que `TextNormalizer` produzca líneas idénticas para ambos y que `YappyEmailParser` devuelva el mismo `ParsedYappy`. Es lo que autoriza a confiar en el corpus de Mail.
+- Antes de commitear, anonimizar **solo** nombre de la contraparte, teléfono y código de confirmación, conservando longitud y formato (`[A-Z]{5}-\d{8}`). Nada más se toca. En el par de equivalencia, anonimizar con los **mismos** valores en ambos archivos.
 
 Los cuerpos deben ser **reales y capturados desde Shortcuts con la misma coerción que aplica el intent**, no copiados desde Mail ni guardados directo desde `Content`:
 
@@ -170,7 +175,7 @@ Procedimiento:
 
 Cuando exista la vista de cuerpo crudo (Fase 4), se comparan contra `rawContent` y se reemplazan si difieren. Hasta recibir los reales, el agente trabaja con fixtures sintéticos marcados `// SYNTHETIC` en el nombre del test; el gate no se cierra con sintéticos.
 
-**Pruebas automáticas.** Un test por fixture y por fila de la tabla de montos de `INTENT.md` (`$3.80`, `$1,250.00`, `B/.3.80`, `USD 3.80`, `""`, `"$0.00"`), más la guardia C10 con `html-body.txt`. Cubren AC-2, AC-3, AC-4, AC-16 y la mitad de parseo de AC-7 y AC-12.
+**Pruebas automáticas.** Un test por fixture y por fila de la tabla de montos de `INTENT.md` (`$3.80`, `$1,250.00`, `B/.3.80`, `USD 3.80`, `""`, `"$0.00"`), la guardia C10 con `html-body.txt`, el test de equivalencia Shortcuts/Mail, y un test parametrizado que recorre todo `Mail/*.mail.txt` exigiendo `parseStatus == ok`. Cubren AC-2, AC-3, AC-4, AC-16 y la mitad de parseo de AC-7 y AC-12.
 
 **Gate de salida.**
 - [ ] `swift test` verde en `GastarioParsing` en macOS **y** en Linux (CI o contenedor).
