@@ -227,6 +227,7 @@ Cuando exista la vista de cuerpo crudo (Fase 4), se comparan contra `rawContent`
 - [ ] Tests anteriores verdes.
 - [ ] 📱 Ambos atajos configurados según `docs/shortcuts.md`. Pagar con Apple Pay → el movimiento aparece en la lista sin abrir la app durante el pago.
 - [ ] 📱 Recibir un Yappy → aparece. Correr el atajo de email dos veces sobre el mismo correo → un solo movimiento.
+- [ ] 📱 Llega un correo de Yappy Comercial al buzón del negocio → no se crea movimiento y el atajo termina sin error (C12). Pagarle $0.01 al propio negocio lo prueba de punta a punta: debe quedar **un** movimiento `outflow` (C13).
 - [ ] 📱 El CSV viejo sigue recibiendo filas (el Append va antes del intent).
 
 **Riesgos.** El trigger de Wallet puede entregar `Merchant` vacío o `Amount = 0`; los formatos reales de `Amount` deben agregarse a los fixtures de Fase 1 en cuanto se observen. Verificar que el intent corre con la app terminada desde el switcher.
@@ -354,7 +355,7 @@ Cuando exista la vista de cuerpo crudo (Fase 4), se comparan contra `rawContent`
 **Procedimiento.**
 1. Empieza al cerrar la Fase 3 (desde ahí Gastario es funcional). Duración: 2–3 semanas de uso normal.
 2. Al final: "Exportar ahora" en Gastario; abrir los dos CSVs viejos; comparar **conteos por día** y **sumas por día** en Numbers.
-3. Cada discrepancia se clasifica: (a) duplicado en Gastario sin `confirmation` (C3), (b) pago rechazado capturado por el tap, (c) captura perdida en Gastario, (d) captura perdida en el CSV viejo.
+3. Cada discrepancia se clasifica: (a) duplicado en Gastario sin `confirmation` (C3), (b) pago rechazado capturado por el tap, (c) captura perdida en Gastario, (d) captura perdida en el CSV viejo, (e) correo de Yappy Comercial ignorado por Gastario pero presente o mal parseado en el CSV viejo (C12). Las (e) se esperan y no cuentan en contra.
 4. Cualquier (c) bloquea el retiro: se investiga, se corrige, y se extiende el período una semana.
 5. Con cero (c): quitar el `Append to Text File` de ambos atajos. Archivar los CSVs viejos como insumo para la importación de v1.1.
 
@@ -399,7 +400,7 @@ Cuando exista la vista de cuerpo crudo (Fase 4), se comparan contra `rawContent`
 | Q2 | ~~Tres cuerpos reales de correo Yappy.~~ **Resuelto en parte** (7 oct 2026). Confirmado en texto plano: encabezados `Enviaste por Yappy` / `Te enviaron por Yappy`, etiquetas `Enviado a` / `Enviado por`, montos con espacio final, formato de fecha `07 oct 2026 12:30 p. m.`. Hay fixture real de enviado con mensaje; faltan en texto plano el enviado sin mensaje y el recibido (ya se capturan solos con la automatización). Falta un caso real con coma (`$1,250.00`); hasta entonces `amount-with-comma` es sintético. | Gate F1 |
 | Q6 | ~~¿El parámetro `String` recibe HTML o texto plano?~~ **Resuelto:** texto plano. Ver C10. | — |
 | Q7 | ¿Qué tipos de correo manda Yappy en total? Conocemos `¡Enviaste un Yappy!`, `¡Pagaste por Yappy!`, el recibido personal, y dos de Yappy Comercial (`Recibiste un Yappy en <url> - Yappy Comercial`, `<Negocio> ha recibido un pago por $… - Yappy Comercial`). Pueden existir solicitudes, devoluciones, rechazos o pagos recibidos. Sacar la lista del corpus de Mail: `grep -h '^Subject:' exportado-lote.txt \| sort \| uniq -c`. Cada asunto distinto se clasifica como movimiento (fixture) o como no-movimiento (el parser lo marca `failed` y el detalle lo muestra; se borra a mano). | Gate F1 |
-| Q9 | ¿El buzón del negocio (Yappy Comercial) está configurado en Mail del iPhone donde corre la automatización? Si sí, C12 es obligatorio desde la Fase 2; si no, sigue siendo la guardia correcta pero no urge probarla en dispositivo. | F2 |
+| Q9 | ~~¿El buzón del negocio está en Mail del iPhone?~~ **Resuelto: sí.** El trigger dispara con los correos de Yappy Comercial hoy. C12 es obligatorio desde la Fase 2 y se verifica en dispositivo. | — |
 | Q8 | Decisión de C11 (tomada en otra sesión): nombre y valores del campo, y si `manual` lo pide en el formulario. Afecta modelo (F0), parser (F1), textos de notificación (F3) y filtros (F4). | F0 |
 | Q3 | ~~Formato exacto del `Amount` que entrega el trigger de Wallet.~~ **Resuelto:** `$1.57`. | — |
 | Q4 | Confirmar C1–C9 o indicar cuáles cambian. | F0 (C1, C2), F5, F6 |
