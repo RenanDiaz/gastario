@@ -12,7 +12,7 @@
 
 ## 2. Cambios propuestos a INTENT.md
 
-Huecos encontrados al convertir el intent en fases. Cada uno tiene una decisión por defecto; si no se objeta, se implementa así.
+Huecos encontrados al convertir el intent en fases. **C1–C13 aprobados el 7 oct 2026** con la decisión por defecto de cada uno; se implementan tal como están escritos.
 
 | # | Hueco | Decisión por defecto | Fase |
 |---|---|---|---|
@@ -25,7 +25,7 @@ Huecos encontrados al convertir el intent en fases. Cada uno tiene una decisión
 | C7 | Un QR que no contenga URL no cabe en `kind: link`. | Se rechaza con mensaje "El QR no contiene un link". Los QR de factura electrónica de la DGI son URLs; si aparece un caso real distinto, se amplía en v1.1. | 6 |
 | C8 | Imágenes sin límite inflan el almacenamiento externo. | Fotos se guardan como JPEG calidad 0.8, lado mayor máximo 2048 px. PDFs sin tocar. | 6 |
 | C9 | El resumen mensual no dice qué mes ni qué zona horaria. | Mes calendario actual en `America/Panama`. Neto = entradas − salidas. Incluye todos los `parseStatus`. | 4 |
-| C11 | Yappy también envía **pagos a comercio** (`Pagaste por Yappy` / `Pagado a`, sin teléfono). El modelo no distingue una transferencia a persona de un pago a comercio, y la distinción afecta el texto de la notificación, los filtros y las categorías de v2. **Decisión abierta en otra sesión; este spec se alinea a lo que se decida allí.** | Recomendación: `counterpartyKind: person \| merchant \| unknown` en `Movement`, transversal a fuentes (`card` → `merchant`; Yappy transferencia → `person`; Yappy pago → `merchant`; `manual` → lo elige quien lo crea, default `unknown`). Alternativa más chica: `yappyKind: transfer \| payment` solo para Yappy. La primera sirve a filtros y categorías cruzando fuentes; la segunda es menos campo pero no generaliza. | 0, 1, 3, 4 |
+| C11 | Yappy también envía **pagos a comercio** (`Pagaste por Yappy` / `Pagado a`, sin teléfono). El modelo no distinguía una transferencia a persona de un pago a comercio, y la distinción afecta el texto de la notificación y las categorías de v2. | `counterpartyKind: person \| merchant \| unknown` en `Movement`, transversal a fuentes: `card` → `merchant`; Yappy `Enviaste`/`Te enviaron` → `person`; Yappy `Pagaste` → `merchant`; `manual` → picker en el formulario, default `unknown`. El re-parseo lo recalcula salvo que esté en `editedFields` (no es editable en v1, así que siempre lo recalcula). | 0, 1, 3, 4 |
 | C12 | **Yappy Comercial.** El mismo remitente manda correos de la cuenta de negocio (Still Louder): "Recibiste una compra en línea por Yappy en …" y "<Negocio> ha recibido un pago por Yappy", template de una sola línea (`Cliente: … Monto:$… Fecha: … Confirmación: …`). Si ese buzón está en Mail del iPhone, el trigger los dispara. Son ingresos del negocio, no movimientos personales. | **Fuera de alcance de Gastario.** El parser los reconoce (texto contiene `Yappy Comercial`) y devuelve `.notAMovement(.yappyComercial)`; el intent no crea nada, no notifica y devuelve éxito. Opcional: filtrar también en el atajo por asunto que no contenga `Yappy Comercial`, pero la regla vive en la app. Un libro de negocio sería otra app o v2+, nunca el mismo store. | 1, 2 |
 | C13 | **Misma confirmación en dos correos.** Un pago a tu propio negocio genera el `Pagaste` personal y el `Recibiste` del negocio con la **misma** confirmación y el mismo timestamp. Deduplicar solo por `confirmation` descarta el segundo en silencio; si el del negocio llega primero, se pierde el gasto personal. | Clave de deduplicación = `(confirmation, direction)`. Con C12 el caso conocido ya no ocurre, pero la clave compuesta cubre cualquier futuro en que estés en ambos extremos de un Yappy, a costo cero. | 2 |
 | C10 | El item `Content` del trigger de Mail está tipado como HTML (`Save File` lo guarda como `.html`), pero la coerción a `String` que recibe el intent entrega **texto plano** con la forma que asume `INTENT.md` (verificado 7 oct 2026 con la interpolación en una acción `Text`). | Sin cambio al parseo. Guardia defensiva: si `rawContent` contiene `<html` o `<!DOCTYPE`, el parser devuelve `failed` sin intentar nada más; el movimiento queda con el crudo y se arregla por re-parseo si Apple cambia la coerción. No se construye extractor de HTML en v1. | 1 |
@@ -80,7 +80,7 @@ Las fases 0 y 1 son independientes y pueden correr en paralelo (dos agentes, dos
 **Alcance.**
 - Proyecto Xcode, bundle id, capability **App Groups** (`group.<bundle-id>`). iCloud Documents se habilita en Fase 5 (es solo un toggle, no una migración).
 - Paquetes `GastarioParsing` (vacío, con un test placeholder) y `GastarioCore`.
-- Modelos `Movement` y `Attachment` según `INTENT.md` + C1 + C2. Relación `attachments` con `deleteRule: .cascade`. **Sin** `@Attribute(.unique)` en `confirmation`.
+- Modelos `Movement` y `Attachment` según `INTENT.md` + C1 (`parseIssues`) + C2 (`editedFields` tipado) + C11 (`counterpartyKind`). Relación `attachments` con `deleteRule: .cascade`. **Sin** `@Attribute(.unique)` en `confirmation`.
 - `GastarioStore.makeContainer(inMemory: Bool) -> ModelContainer`. En disco apunta a `FileManager.containerURL(forSecurityApplicationGroupIdentifier:)`. Falla en voz alta (`fatalError` con mensaje) si el App Group no está disponible: es un error de configuración, no de runtime.
 - `MovementListView` de solo lectura con `@Query`, agrupada por día en `America/Panama`, orden `occurredAt` descendente. Muestra contraparte, monto con signo, ícono de fuente, badges "sin nota" y "requiere revisión".
 - `#if DEBUG`: menú para insertar movimientos de muestra y para borrar todo.
@@ -155,7 +155,7 @@ Las fases 0 y 1 son independientes y pueden correr en paralelo (dos agentes, dos
 
 **Fixtures.** `Tests/GastarioParsingTests/Fixtures/Yappy/`. Archivos `.txt` con el texto plano **tal como lo recibe el intent** (ver procedimiento):
 - `sent-with-message.txt`, `sent-without-message.txt`, `received.txt`, `paid-merchant.txt`, `paid-merchant-with-message.txt`, `amount-with-comma.txt`. Los dos de pago a comercio ya existen por el camino de Mail; el primero es, además, el caso real de `Mensaje` vacío.
-- `comercial-online-payment.mail.txt` y `comercial-received.mail.txt`: correos de Yappy Comercial reales, para la guardia C12. Se anonimizan igual (cliente, confirmación, número de pedido, nombre del negocio y su URL).
+- `comercial-online-payment.mail.txt` y `comercial-received.mail.txt`: correos de Yappy Comercial reales, para la guardia C12.
 - `unexpected-format.txt` (correo que no es de Yappy) y `html-body.txt` (el HTML crudo de un correo real, para la guardia C10).
 - Variantes de fecha con U+00A0 / U+202F: si las capturas reales ya las traen en la línea de fecha, son fixtures; si no, se generan **en el test** reemplazando los espacios de esa línea.
 - **Corpus desde Mail** (`Mail/*.mail.txt`): correos anteriores exportados desde Mail.app con *File → Save As… → Plain Text*. Verificado que, tras normalizar, producen las mismas líneas que el camino de Shortcuts; difieren solo en espacios finales, un espacio inicial en el teléfono y líneas con un solo U+00A0. Reglas:
@@ -163,7 +163,7 @@ Las fases 0 y 1 son independientes y pueden correr en paralelo (dos agentes, dos
   - Sirven para amplitud (montos con coma, recibidos sin mensaje, otros meses del año, variantes del template), **no** sustituyen a los tres fixtures del camino de Shortcuts que exige el gate.
   - Un correo viejo con otro template que no parsee se guarda en `Mail/legacy/` con el test marcado como `legacy`: es insumo para la importación de v1.1, no bug de v1.
 - **Test de equivalencia**: `sent-with-message.txt` (Shortcuts) y `sent-with-message.mail.txt` (Mail) son el mismo Yappy. El test exige que `TextNormalizer` produzca líneas idénticas para ambos y que `YappyEmailParser` devuelva el mismo `ParsedYappy`. Es lo que autoriza a confiar en el corpus de Mail.
-- Antes de commitear, anonimizar **solo** nombre de la contraparte, teléfono y código de confirmación, conservando longitud y formato (`[A-Z]{5}-\d{8}`). Nada más se toca. En el par de equivalencia, anonimizar con los **mismos** valores en ambos archivos.
+- El repo es **privado**: los fixtures se commitean tal cual. Si algún día se hace público, antes anonimizar nombre de la contraparte, teléfono, código de confirmación, número de pedido y nombre/URL del negocio, conservando longitud y formato, y con los mismos valores en el par de equivalencia.
 
 Los cuerpos deben ser **reales y capturados desde Shortcuts con la misma coerción que aplica el intent**, no copiados desde Mail ni guardados directo desde `Content`:
 
@@ -240,7 +240,7 @@ Cuando exista la vista de cuerpo crudo (Fase 4), se comparan contra `rawContent`
 
 **Alcance.**
 - `Gastario/Notifications/NotificationService`: pedir permiso en el primer arranque; registrar categoría `MOVEMENT_QUESTION` con `UNTextInputNotificationAction(identifier: "REPLY", title: "Responder")`, **sin** `.foreground`. Implementa `MovementNotifier`.
-- `GastarioCore/Notifications/NotificationText.build(for: Movement) -> (title, body)`: textos de `INTENT.md`. Para tarjeta `partial` usa `parseIssues` para elegir "el monto", "el comercio" o "el monto ni el comercio". Montos con `.currency(code: "USD")` y locale `en_US` → `$3.80`.
+- `GastarioCore/Notifications/NotificationText.build(for: Movement) -> (title, body)`: textos de `INTENT.md`, con una variante por C11: salida a `merchant` → "¿En qué gastaste $0.21 en PS DAVID CL 3ERA?"; salida a `person` → "¿Para qué le enviaste $40.00 a Carlos Franceschi?"; entrada → "¿Por qué te enviaron $123.20? (Miguel E.)". Para tarjeta `partial` usa `parseIssues` para elegir "el monto", "el comercio" o "el monto ni el comercio". Montos con `.currency(code: "USD")` y locale `en_US` → `$3.80`.
 - Identificador de la notificación = `movement.id.uuidString`.
 - `Gastario/App/AppDelegate` vía `@UIApplicationDelegateAdaptor`. En `didFinishLaunchingWithOptions`: crear el `ModelContainer` compartido (propiedad del AppDelegate, no de la escena SwiftUI) y asignar `UNUserNotificationCenter.current().delegate`. Motivo: al responder con la app terminada, iOS lanza el proceso y llama a `didReceive` sin que ninguna vista exista.
 - `GastarioCore/Notifications/NoteReplyHandler.handle(movementID:text:)`: busca, asigna `note` y `notedAt`, guarda. El `completionHandler` del delegate se llama **después** del `await` de este método.
@@ -248,7 +248,7 @@ Cuando exista la vista de cuerpo crudo (Fase 4), se comparan contra `rawContent`
 - Reemplazar el no-op de Fase 2 por `NotificationService`.
 
 **Pruebas automáticas.**
-- `NotificationText` para los 6 casos: salida, entrada, tarjeta sin monto, sin comercio, sin ambos, Yappy `failed`.
+- `NotificationText` para los 7 casos: salida a comercio, salida a persona, entrada, tarjeta sin monto, sin comercio, sin ambos, Yappy `failed`.
 - `NoteReplyHandler` con container en memoria: guarda `note` y `notedAt`; con un ID inexistente no lanza.
 
 **Gate de salida.**
@@ -276,7 +276,7 @@ Cuando exista la vista de cuerpo crudo (Fase 4), se comparan contra `rawContent`
 - `GastarioCore/Reparse/ReparseService`:
   - `reparse(_ movement:)`: vuelve a correr el parser sobre `rawInputs`/`rawContent`, escribe solo los campos **no** incluidos en `editedFields`, recalcula `parseStatus` y `parseIssues` (un campo editado nunca cuenta como issue). No toca `note`, `notedAt`, `attachments`. Ignora `manual`.
   - `reparseAll()`: solo `parseStatus != ok`. Devuelve conteo de cambiados.
-- **Entrada manual** (`+`): monto, dirección, contraparte, fecha (default ahora), nota opcional. Crea `source = manual`, `parseStatus = ok`, sin pasar por `CaptureService` → sin notificación.
+- **Entrada manual** (`+`): monto, dirección, contraparte, tipo de contraparte (C11, default `unknown`), fecha (default ahora), nota opcional. Crea `source = manual`, `parseStatus = ok`, sin pasar por `CaptureService` → sin notificación.
 - **Borrar**: swipe con `confirmationDialog`. Cascade borra adjuntos.
 - **Resumen del mes** como cabecera de la lista (C9).
 - **Ajustes** (esqueleto): "Re-parsear todo" con resultado "N movimientos actualizados". Fase 5 agrega las filas de export.
@@ -401,7 +401,7 @@ Cuando exista la vista de cuerpo crudo (Fase 4), se comparan contra `rawContent`
 | Q6 | ~~¿El parámetro `String` recibe HTML o texto plano?~~ **Resuelto:** texto plano. Ver C10. | — |
 | Q7 | ¿Qué tipos de correo manda Yappy en total? Conocemos `¡Enviaste un Yappy!`, `¡Pagaste por Yappy!`, el recibido personal, y dos de Yappy Comercial (`Recibiste un Yappy en <url> - Yappy Comercial`, `<Negocio> ha recibido un pago por $… - Yappy Comercial`). Pueden existir solicitudes, devoluciones, rechazos o pagos recibidos. Sacar la lista del corpus de Mail: `grep -h '^Subject:' exportado-lote.txt \| sort \| uniq -c`. Cada asunto distinto se clasifica como movimiento (fixture) o como no-movimiento (el parser lo marca `failed` y el detalle lo muestra; se borra a mano). | Gate F1 |
 | Q9 | ~~¿El buzón del negocio está en Mail del iPhone?~~ **Resuelto: sí.** El trigger dispara con los correos de Yappy Comercial hoy. C12 es obligatorio desde la Fase 2 y se verifica en dispositivo. | — |
-| Q8 | Decisión de C11 (tomada en otra sesión): nombre y valores del campo, y si `manual` lo pide en el formulario. Afecta modelo (F0), parser (F1), textos de notificación (F3) y filtros (F4). | F0 |
+| Q8 | ~~Decisión de C11.~~ **Resuelto** con la aprobación de C11: `counterpartyKind: person \| merchant \| unknown`, con picker en entrada manual. Si la otra sesión llegó a otra conclusión, avisar para alinear. | — |
 | Q3 | ~~Formato exacto del `Amount` que entrega el trigger de Wallet.~~ **Resuelto:** `$1.57`. | — |
-| Q4 | Confirmar C1–C9 o indicar cuáles cambian. | F0 (C1, C2), F5, F6 |
+| Q4 | ~~Confirmar C1–C13.~~ **Resuelto: aprobados** (7 oct 2026). | — |
 | Q5 | ¿La lista muestra montos de `partial` con `amount = 0` como `$0.00` o como "—"? Default: "—" con el badge de revisión. | F0 |
