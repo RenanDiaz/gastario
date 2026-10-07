@@ -109,7 +109,7 @@ Las fases 0 y 1 son independientes y pueden correr en paralelo (dos agentes, dos
 
 **Alcance.** Paquete `GastarioParsing`:
 - `TextNormalizer.normalize(_:)`: U+00A0 y U+202F → espacio; `\r\n` → `\n`.
-- `AmountParser.parse(_:) -> Decimal?`: regex `\d[\d,]*(?:\.\d+)?`, quitar comas, `Decimal(string:locale:)` POSIX. Devuelve `nil` para vacío o no parseable; `0` para `"$0.00"`.
+- `AmountParser.parse(_:) -> Decimal?`: regex `\d[\d,]*(?:\.\d+)?`, quitar comas, `Decimal(string:locale:)` POSIX. Devuelve `nil` para vacío o no parseable; `0` para `"$0.00"`. Formato confirmado del trigger de Wallet: `$1.57`. Los demás formatos de la tabla son defensa, no requisito.
 - `CardInputParser.parse(CardRawInputs) -> ParsedCard`: aplica `AmountParser`; monto `nil` o `0` → issue `amount` y `amount = 0`; merchant vacío o solo espacios → issue `counterparty`.
 - `YappyDateParser.parse(_:) -> Date?`: regex día/mes/año/hora/minuto/`a|p`; mapa `ene…dic` + `sept`; `DateComponents` con `America/Panama`. Sin `DateFormatter`.
 - `YappyEmailParser.parse(_:) -> ParsedYappy`: dirección, monto, contraparte, mensaje, confirmación, fecha, según la tabla de `INTENT.md`. Reglas de estado:
@@ -123,7 +123,14 @@ Las fases 0 y 1 son independientes y pueden correr en paralelo (dos agentes, dos
 - Variantes de fecha: `date-nbsp.txt` (U+00A0), `date-narrow-nbsp.txt` (U+202F), `date-plain.txt`.
 - `unexpected-format.txt` (cuerpo que no es de Yappy).
 
-Los cuerpos deben ser **reales**, copiados desde Mail (seleccionar todo el cuerpo → copiar). Cuando exista la vista de cuerpo crudo (Fase 4), se comparan contra lo que llega al intent y se reemplazan si difieren. Hasta recibir los reales, el agente trabaja con fixtures sintéticos marcados `// SYNTHETIC` en el nombre del test; el gate no se cierra con sintéticos.
+Los cuerpos deben ser **reales y capturados desde Shortcuts**, no copiados desde Mail: Mail renderiza el HTML y Shortcuts hace su propia conversión a texto, así que saltos de línea y espacios no separables pueden diferir. Procedimiento:
+
+1. En la automatización de Yappy actual, dentro del `Repeat` y antes del regex, agregar `Save File` con el mismo `Content` que se pasa al parseo. Destino `iCloud Drive/Shortcuts/yappy-raw/`, nombre `yappy-{Current Date:yyyyMMdd-HHmmss}.txt`, sin preguntar dónde guardar, sin sobrescribir.
+2. Esperar un correo de cada tipo (enviado con mensaje, enviado sin mensaje, recibido).
+3. En la Mac, confirmar que los espacios especiales llegaron intactos: `LC_ALL=C grep -oE $'\xC2\xA0|\xE2\x80\xAF' archivo.txt | sort | uniq -c`. Si ningún archivo los trae, Shortcuts ya normaliza y los fixtures `date-nbsp` / `date-narrow-nbsp` quedan sintéticos por diseño.
+4. Copiar a la carpeta de fixtures con los nombres de arriba. Se pueden cambiar nombres de personas; no se toca nada más.
+
+Cuando exista la vista de cuerpo crudo (Fase 4), se comparan contra `rawContent` y se reemplazan si difieren. Hasta recibir los reales, el agente trabaja con fixtures sintéticos marcados `// SYNTHETIC` en el nombre del test; el gate no se cierra con sintéticos.
 
 **Pruebas automáticas.** Un test por fixture y por fila de la tabla de montos de `INTENT.md` (`$3.80`, `$1,250.00`, `B/.3.80`, `USD 3.80`, `""`, `"$0.00"`). Cubren AC-2, AC-3, AC-4, AC-16 y la mitad de parseo de AC-7 y AC-12.
 
@@ -337,6 +344,6 @@ Los cuerpos deben ser **reales**, copiados desde Mail (seleccionar todo el cuerp
 |---|---|---|
 | Q1 | Bundle id y Team ID para el App Group y el ubiquity container. | F0 |
 | Q2 | Tres cuerpos reales de correo Yappy (enviado con mensaje, sin mensaje, recibido), copiados desde Mail. | Gate F1 |
-| Q3 | Formato exacto del `Amount` que entrega el trigger de Wallet hoy (revisar el CSV viejo: ¿`3.80`, `$3.80`, `B/.3.80`?). | F1 (fixtures), F2 |
+| Q3 | ~~Formato exacto del `Amount` que entrega el trigger de Wallet.~~ **Resuelto:** `$1.57`. | — |
 | Q4 | Confirmar C1–C9 o indicar cuáles cambian. | F0 (C1, C2), F5, F6 |
 | Q5 | ¿La lista muestra montos de `partial` con `amount = 0` como `$0.00` o como "—"? Default: "—" con el badge de revisión. | F0 |
