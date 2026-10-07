@@ -25,6 +25,7 @@ Huecos encontrados al convertir el intent en fases. Cada uno tiene una decisión
 | C7 | Un QR que no contenga URL no cabe en `kind: link`. | Se rechaza con mensaje "El QR no contiene un link". Los QR de factura electrónica de la DGI son URLs; si aparece un caso real distinto, se amplía en v1.1. | 6 |
 | C8 | Imágenes sin límite inflan el almacenamiento externo. | Fotos se guardan como JPEG calidad 0.8, lado mayor máximo 2048 px. PDFs sin tocar. | 6 |
 | C9 | El resumen mensual no dice qué mes ni qué zona horaria. | Mes calendario actual en `America/Panama`. Neto = entradas − salidas. Incluye todos los `parseStatus`. | 4 |
+| C10 | **El `Content` del trigger de Mail es el HTML completo del correo** (~20 KB, verificado con capturas reales), no texto con etiqueta/línea vacía/valor como asume `INTENT.md`. Las reglas de la tabla de parseo siguen siendo válidas, pero sobre el texto **extraído** del HTML, no sobre el crudo. | Agregar un paso `HTMLTextExtractor` puro (Foundation, sin WebKit ni `NSAttributedString(html:)`) antes del parseo de campos. `rawContent` guarda el HTML tal cual. Detalle en Fase 1. | 1 |
 
 ## 3. Arquitectura y convenciones (aplican a todas las fases)
 
@@ -108,31 +109,44 @@ Las fases 0 y 1 son independientes y pueden correr en paralelo (dos agentes, dos
 **Objetivo.** Todo el parseo como funciones puras sobre texto, con fixtures reales, sin tocar SwiftData ni UI. Es la parte que más valor da por hora de agente y la que `INTENT.md` identifica como frágil hoy.
 
 **Alcance.** Paquete `GastarioParsing`:
-- `TextNormalizer.normalize(_:)`: U+00A0 y U+202F → espacio; `\r\n` → `\n`.
+- `HTMLTextExtractor.text(from html: String) -> [String]` (C10). Determinista y puro; el mismo HTML siempre da las mismas líneas:
+  1. Eliminar `<style>…</style>`, `<script>…</script>` y comentarios `<!-- … -->`.
+  2. Los saltos de línea del HTML fuente **no** cuentan: la etiqueta "Enviado a" llega como `Enviado\n   a` dentro de un `<span>`, y el nombre como `<strong>Isabel</strong><strong>\n Davila</strong>`.
+  3. Insertar `\n` al cerrar bloques: `</p>`, `</td>`, `</tr>`, `</th>`, `</div>`, `</h1>`–`</h6>`, `</li>`, y en `<br>`.
+  4. Quitar el resto de etiquetas. Decodificar entidades (`&nbsp;`, `&amp;`, `&lt;`, `&gt;`, `&quot;`, `&#NNN;`, `&#xHH;`).
+  5. Normalizar U+00A0 y U+202F a espacio, colapsar espacios repetidos dentro de cada línea, recortar, descartar líneas vacías.
+  Resultado esperado para un correo real: `… / Enviaste por Yappy / $600.00 / Enviado a / Isabel Davila / 60138151 / Fecha / 07 oct 2026 11:53 a. m. / Mensaje / Deposito envio de Alejandro / Confirmación / SFDLM-66689828 / …`.
+- Si la entrada no contiene `<html` ni `<body` (texto plano, por si Apple cambia el trigger), el extractor aplica solo el paso 5 línea por línea.
 - `AmountParser.parse(_:) -> Decimal?`: regex `\d[\d,]*(?:\.\d+)?`, quitar comas, `Decimal(string:locale:)` POSIX. Devuelve `nil` para vacío o no parseable; `0` para `"$0.00"`. Formato confirmado del trigger de Wallet: `$1.57`. Los demás formatos de la tabla son defensa, no requisito.
 - `CardInputParser.parse(CardRawInputs) -> ParsedCard`: aplica `AmountParser`; monto `nil` o `0` → issue `amount` y `amount = 0`; merchant vacío o solo espacios → issue `counterparty`.
 - `YappyDateParser.parse(_:) -> Date?`: regex día/mes/año/hora/minuto/`a|p`; mapa `ene…dic` + `sept`; `DateComponents` con `America/Panama`. Sin `DateFormatter`.
-- `YappyEmailParser.parse(_:) -> ParsedYappy`: dirección, monto, contraparte, mensaje, confirmación, fecha, según la tabla de `INTENT.md`. Reglas de estado:
+- `YappyEmailParser.parse(_:) -> ParsedYappy`: corre `HTMLTextExtractor` y aplica la tabla de `INTENT.md` sobre las líneas resultantes, con estos ajustes verificados en capturas reales:
+  - Dirección: línea `Enviaste por Yappy` → `outflow`; `Te enviaron por Yappy` → `inflow` (texto del recibido pendiente de confirmar con la captura).
+  - Monto: primera línea que empieza con `$`, p. ej. `$600.00` (en el HTML trae un espacio final antes de un `<img>`).
+  - Contraparte: línea siguiente a `Enviado a` / `Enviado por`. La línea que le sigue es el teléfono (`60138151`); se ignora en v1.
+  - Fecha: línea siguiente a `Fecha`. Mensaje: línea siguiente a `Mensaje`, salvo que sea `Confirmación`. Confirmación: regex `[A-Z]{5}-\d{8}` sobre todo el texto.
+  Reglas de estado:
   - `failed`: no se pudo determinar dirección **o** monto.
   - `partial`: dirección y monto presentes, pero falta alguno de contraparte, confirmación o fecha. Cada faltante va a `parseIssues`.
   - `ok`: todo presente. `yappyMessage` vacío **no** es un issue.
 - Tipos de salida (`ParsedCard`, `ParsedYappy`, `ParseStatus`, `ParseIssue`, `Direction`) viven aquí y `GastarioCore` los reexporta o mapea.
 
-**Fixtures.** `Tests/GastarioParsingTests/Fixtures/Yappy/`:
-- `sent-with-message.txt`, `sent-without-message.txt`, `received.txt`, `amount-with-comma.txt`.
-- Variantes de fecha: `date-nbsp.txt` (U+00A0), `date-narrow-nbsp.txt` (U+202F), `date-plain.txt`.
-- `unexpected-format.txt` (cuerpo que no es de Yappy).
+**Fixtures.** `Tests/GastarioParsingTests/Fixtures/Yappy/`. Son archivos `.html` de ~20 KB, el `Content` tal cual lo entrega Shortcuts:
+- `sent-with-message.html`, `sent-without-message.html`, `received.html`, `amount-with-comma.html`.
+- `unexpected-format.html` (correo que no es de Yappy) y `plain-text.txt` (sintético: el mismo contenido sin HTML, para el camino de texto plano del extractor).
+- Variantes de fecha con U+00A0 / U+202F: se generan **en el test** a partir de `sent-with-message.html` reemplazando los espacios de la línea de fecha, no como archivos aparte. En las capturas reales los 4 U+00A0 por correo están en párrafos vacíos del footer, no en la fecha.
+- Antes de commitear, anonimizar **solo** nombre de la contraparte, teléfono y código de confirmación, conservando longitud y formato (`[A-Z]{5}-\d{8}`). Nada más se toca.
 
-Los cuerpos deben ser **reales y capturados desde Shortcuts**, no copiados desde Mail: Mail renderiza el HTML y Shortcuts hace su propia conversión a texto, así que saltos de línea y espacios no separables pueden diferir. Procedimiento:
+Los cuerpos deben ser **reales y capturados desde Shortcuts**, no copiados desde Mail: Shortcuts entrega el HTML crudo y Mail entrega texto renderizado; son entradas distintas. Procedimiento:
 
 1. En la automatización de Yappy actual, dentro del `Repeat` y antes del regex, agregar `Save File` con el mismo `Content` que se pasa al parseo. Destino `iCloud Drive/Shortcuts/yappy-raw/`, nombre `yappy-{Current Date:yyyyMMdd-HHmmss}.txt`, sin preguntar dónde guardar, sin sobrescribir.
 2. Esperar un correo de cada tipo (enviado con mensaje, enviado sin mensaje, recibido).
-3. En la Mac, confirmar que los espacios especiales llegaron intactos: `LC_ALL=C grep -oE $'\xC2\xA0|\xE2\x80\xAF' archivo.txt | sort | uniq -c`. Si ningún archivo los trae, Shortcuts ya normaliza y los fixtures `date-nbsp` / `date-narrow-nbsp` quedan sintéticos por diseño.
-4. Copiar a la carpeta de fixtures con los nombres de arriba. Se pueden cambiar nombres de personas; no se toca nada más.
+3. En la Mac, verificar que es HTML (`head -1` empieza con `<!DOCTYPE html`) y localizar los espacios especiales: `LC_ALL=C grep -n $'\xC2\xA0' archivo.txt | cut -c1-60`.
+4. Anonimizar según la regla de arriba y copiar a la carpeta de fixtures con extensión `.html`.
 
 Cuando exista la vista de cuerpo crudo (Fase 4), se comparan contra `rawContent` y se reemplazan si difieren. Hasta recibir los reales, el agente trabaja con fixtures sintéticos marcados `// SYNTHETIC` en el nombre del test; el gate no se cierra con sintéticos.
 
-**Pruebas automáticas.** Un test por fixture y por fila de la tabla de montos de `INTENT.md` (`$3.80`, `$1,250.00`, `B/.3.80`, `USD 3.80`, `""`, `"$0.00"`). Cubren AC-2, AC-3, AC-4, AC-16 y la mitad de parseo de AC-7 y AC-12.
+**Pruebas automáticas.** Un test por fixture y por fila de la tabla de montos de `INTENT.md` (`$3.80`, `$1,250.00`, `B/.3.80`, `USD 3.80`, `""`, `"$0.00"`). Para `HTMLTextExtractor`, un golden test: las líneas extraídas de `sent-with-message.html` se comparan contra un `.expected.txt` versionado, para que cualquier cambio en la extracción sea visible en el diff. Cubren AC-2, AC-3, AC-4, AC-16 y la mitad de parseo de AC-7 y AC-12.
 
 **Gate de salida.**
 - [ ] `swift test` verde en `GastarioParsing` en macOS **y** en Linux (CI o contenedor).
@@ -215,7 +229,7 @@ Cuando exista la vista de cuerpo crudo (Fase 4), se comparan contra `rawContent`
 - **Filtros** en la lista: "Todos", "Sin nota" (`note == nil`), "Requiere revisión" (`parseStatus != ok`). Cuenta en cada filtro.
 - **Detalle** (`MovementDetailView`):
   - Todos los campos. Link a Maps si hay coordenadas. Aviso si es Yappy sin `confirmation` (C3).
-  - Sección **Cuerpo crudo** para Yappy, con botón "Copiar" (para alimentar fixtures). Para tarjeta, `rawInputs` formateado.
+  - Sección **Cuerpo crudo** para Yappy: muestra las líneas extraídas por `HTMLTextExtractor` (legibles) con un toggle a HTML crudo, y botón "Copiar" del HTML (para alimentar fixtures). Para tarjeta, `rawInputs` formateado.
   - Edición de `amount`, `counterparty`, `occurredAt`. Cada edición agrega el campo a `editedFields` y quita su `ParseIssue`. Si `parseIssues` queda vacío y el estado era `partial` → `ok`. Un `failed` **no** cambia por edición: solo por re-parseo (su crudo no se entendió; editar a mano no lo valida).
   - `note` editable; al guardar asigna `notedAt` si estaba vacío.
   - Botón "Re-parsear" en `card`/`yappy`.
@@ -343,7 +357,7 @@ Cuando exista la vista de cuerpo crudo (Fase 4), se comparan contra `rawContent`
 | # | Pregunta | Bloquea |
 |---|---|---|
 | Q1 | Bundle id y Team ID para el App Group y el ubiquity container. | F0 |
-| Q2 | Tres cuerpos reales de correo Yappy (enviado con mensaje, sin mensaje, recibido), capturados desde Shortcuts según el procedimiento de la Fase 1. | Gate F1 |
+| Q2 | ~~Tres cuerpos reales de correo Yappy.~~ **Capturados** (2 enviados, 1 recibido, 7 oct 2026). Falta confirmar: texto exacto del encabezado del recibido (`Te enviaron por Yappy`?), etiqueta de contraparte en el recibido (`Enviado por`?), y cómo se ve la fila `Mensaje` cuando no hay mensaje. | Gate F1 |
 | Q3 | ~~Formato exacto del `Amount` que entrega el trigger de Wallet.~~ **Resuelto:** `$1.57`. | — |
 | Q4 | Confirmar C1–C9 o indicar cuáles cambian. | F0 (C1, C2), F5, F6 |
 | Q5 | ¿La lista muestra montos de `partial` con `amount = 0` como `$0.00` o como "—"? Default: "—" con el badge de revisión. | F0 |
