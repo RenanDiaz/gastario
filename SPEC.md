@@ -343,7 +343,7 @@ Cuando exista la vista de cuerpo crudo (Fase 4), se comparan contra `rawContent`
 | # | Pregunta | Bloquea |
 |---|---|---|
 | Q1 | Bundle id y Team ID para el App Group y el ubiquity container. | F0 |
-| Q2 | Tres cuerpos reales de correo Yappy (enviado con mensaje, sin mensaje, recibido), copiados desde Mail. | Gate F1 |
+| Q2 | Tres cuerpos reales de correo Yappy (enviado con mensaje, sin mensaje, recibido), capturados desde Shortcuts según el procedimiento de la Fase 1. | Gate F1 |
 | Q3 | ~~Formato exacto del `Amount` que entrega el trigger de Wallet.~~ **Resuelto:** `$1.57`. | — |
 | Q4 | Confirmar C1–C9 o indicar cuáles cambian. | F0 (C1, C2), F5, F6 |
 | Q5 | ¿La lista muestra montos de `partial` con `amount = 0` como `$0.00` o como "—"? Default: "—" con el badge de revisión. | F0 |
