@@ -64,8 +64,12 @@ Por qué dos paquetes y no uno: un agente que corre en la nube (Linux) puede des
 | 5 | Exportar y respaldo | CSV en iCloud Drive sin abrir la app | 11, 21 | 2, 4 |
 | 6 | Adjuntos | Foto, PDF, link y QR por movimiento | 15, 19, 20 | 4 |
 | 7 | Transición | Shortcuts viejos retirados con evidencia | — | 3 + 2–3 semanas |
+| S1 | Spike: correos de factura | Catálogo de remitentes y formatos reales, decisión go/no-go | — | — |
+| 8 | Facturas por correo (v1.1) | Llega la factura por correo → queda asignada al movimiento | AC-F1…F8 (propuestos) | 4, 6, S1 |
 
 Las fases 0 y 1 son independientes y pueden correr en paralelo (dos agentes, dos ramas).
+
+El spike S1 no depende de código y conviene **arrancarlo ya**: es recolección de datos reales durante 2–3 semanas, el mismo tipo de espera que la Fase 7. La Fase 8 queda fuera de v1 (ver `INTENT.md`, "Fuera de alcance v1") y solo se abre si S1 sale con go.
 
 ---
 
@@ -305,6 +309,122 @@ Los cuerpos deben ser **reales**, copiados desde Mail (seleccionar todo el cuerp
 
 ---
 
+## Spike S1 — Correos de factura electrónica
+
+**Objetivo.** Saber con datos reales cómo llegan los correos de factura electrónica en Panamá, para decidir si se pueden atrapar con un trigger de Shortcuts y asignar a un movimiento. Es investigación, no producto: el entregable es un documento con fixtures y una decisión, no código de la app.
+
+**Por qué es un spike y no parte de la Fase 6.** La Fase 6 adjunta facturas a mano. Atraparlas por correo es una captura nueva (trigger, intent, dedup, asignación) y todo su diseño depende de formatos que hoy no conocemos. Diseñar sin ver los correos sería repetir el error del parseo frágil de Yappy.
+
+**Procedimiento** (lo hace la persona; el agente prepara el atajo y analiza lo recolectado).
+1. **Inventario retroactivo.** En Mail, buscar `factura`, `factura electrónica`, `CUFE`, `CAFE`, `comprobante` en los últimos 3 meses. Anotar por correo: remitente, dominio, asunto, si viene del comercio o de un PAC, adjuntos (PDF/XML/ninguno), y si el cuerpo trae total, CUFE, RUC del emisor, fecha y link/QR de consulta de la DGI.
+2. **Atajo de diagnóstico** (sin código de la app, corre 2–3 semanas):
+   ```
+   When I receive an email where Subject contains "Factura"   ← un atajo por patrón candidato
+   Repeat with each item in [Email]
+      Get Details of Email (Sender, Subject, Date Received, Contents, y Attachments si existe)
+      Append to Text File  iCloud Drive/Gastario-Spike/invoices-YYYY-MM-DD.txt
+         ("=== <sender> | <subject> | <date>\n<contents>\n--- attachments: <lista o 'n/a'>")
+   End Repeat
+   ```
+   - Objetivo doble: ver qué **recibe realmente** el atajo (puede diferir de lo que muestra Mail, como pasó con Yappy) y medir cuántos correos de factura se escapan a cada patrón de trigger.
+3. **Cruce con movimientos.** Para cada factura recolectada, buscar el movimiento real (CSV viejo o Gastario si ya está en Fase 2+) y anotar: diferencia de monto, diferencia de tiempo pago→correo, y si el nombre de Wallet/Yappy se parece al emisor de la factura.
+
+**Preguntas que el spike debe cerrar.**
+
+| # | Pregunta | Impacto en la Fase 8 |
+|---|---|---|
+| S1.1 | ¿El trigger de email de Shortcuts permite filtrar por asunto, por remitente o ambos? ¿Admite varios remitentes? ¿Corre sin confirmación? | Cuántos atajos hay que configurar y si es viable mantener la lista |
+| S1.2 | ¿Los remitentes son pocos y estables (PACs) o uno por comercio? | Trigger por remitente (preciso) vs. por asunto (amplio, con falsos positivos) |
+| S1.3 | ¿`Contents` del `Email` trae CUFE, total, RUC, fecha y link de la DGI en texto? | Si no, el parseo depende del adjunto → ver S1.4 |
+| S1.4 | ¿El `Email` del trigger expone adjuntos? ¿Se pueden pasar como `File` a un intent? | Si no, el PDF/XML solo llega por la Share Extension de v1.1 |
+| S1.5 | ¿El total de la factura coincide con el monto cobrado? Casos: propina, pago dividido, factura por consumo parcial | Si el monto exacto falla seguido, la asignación automática no sirve y todo queda como sugerencia |
+| S1.6 | Distribución del retraso pago → correo (mediana y máximo) | Ventana de búsqueda de candidatos |
+| S1.7 | ¿El nombre del emisor se parece al `counterparty` de Wallet? | Si sí, sirve como desempate; si no, se ignora en v1.1 |
+| S1.8 | ¿Algún comercio envía la misma factura dos veces, o factura + nota de crédito? | Dedup por CUFE y manejo de notas de crédito |
+
+**Entregables.**
+- `docs/spikes/invoice-emails.md`: tabla del inventario, respuestas S1.1–S1.8, patrón(es) de trigger recomendados y decisión **go / go reducido / no-go**.
+- `Packages/GastarioParsing/Tests/GastarioParsingTests/Fixtures/Invoice/`: al menos 5 cuerpos reales de **emisores distintos**, tal como los recibió el atajo de diagnóstico. Si hay datos personales (cédula, dirección), se anonimizan antes de commitear.
+
+**Criterio de go.**
+- **Go:** el cuerpo trae al menos total y CUFE (o link de la DGI con CUFE) en ≥ 70 % de los correos recolectados, y el trigger los atrapa con ≤ 3 atajos.
+- **Go reducido:** los datos solo vienen en el adjunto y el `Email` del atajo no lo expone → la Fase 8 se monta sobre la Share Extension de v1.1 (compartir desde Mail), no sobre un trigger automático.
+- **No-go:** remitentes demasiado dispersos o datos solo en PDF escaneado. Se queda la Fase 6 manual.
+
+**Gate de salida.**
+- [ ] Inventario con ≥ 15 correos de factura de ≥ 5 emisores.
+- [ ] 📱 Atajo de diagnóstico corrió ≥ 2 semanas.
+- [ ] Respuestas S1.1–S1.8 y decisión registradas en `docs/spikes/invoice-emails.md`.
+
+---
+
+## Fase 8 — Facturas por correo (v1.1, sujeta a S1)
+
+> El diseño de abajo es la hipótesis previa al spike. Lo que S1 contradiga se corrige aquí antes de abrir la fase.
+
+**Objetivo.** Un correo de factura se captura solo, se parsea y queda asignado al movimiento que corresponde, o como sugerencia si no hay certeza. Sin tocar el camino de captura de tarjeta y Yappy (principio 4).
+
+**Alcance.**
+- **Modelo `Invoice`** (entidad propia, no un `Attachment`: tiene crudo, parseo y estado de asignación, y se puede desasignar sin perder nada):
+
+  | Campo | Tipo | Notas |
+  |---|---|---|
+  | `id` | UUID | |
+  | `rawContent` | String | Cuerpo tal como llegó al intent |
+  | `sender`, `subject` | String? | Si el atajo los pasa |
+  | `capturedAt` | Date | |
+  | `cufe` | String? | Clave de dedup, con fetch explícito (misma regla que `confirmation`: sin `@Attribute(.unique)`) |
+  | `issuerName`, `issuerRUC` | String? | |
+  | `total` | Decimal? | |
+  | `issuedAt` | Date? | `America/Panama` |
+  | `dgiURL` | URL? | Link de consulta, si viene en el cuerpo |
+  | `parseStatus`, `parseIssues` | | Igual que `Movement` |
+  | `matchStatus` | enum `unmatched` \| `suggested` \| `autoLinked` \| `confirmed` \| `dismissed` | |
+  | `matchLocked` | Bool | `true` cuando yo asigno, desasigno o descarto a mano. El matcher no lo vuelve a tocar (principio 3) |
+  | `movement` | `Movement?` | `deleteRule: .nullify`: borrar el movimiento devuelve la factura a la bandeja, no la borra |
+
+  `Movement` gana la inversa `invoices: [Invoice]` (puede haber más de una, p. ej. factura + nota de crédito).
+- **`GastarioParsing/InvoiceEmailParser`**: función pura sobre el cuerpo normalizado. Reglas concretas salen de los fixtures de S1. `failed` si no hay ni total ni CUFE.
+- **`GastarioCore/Invoices/InvoiceMatcher`**: función pura `candidates(for: Invoice, among: [Movement]) -> [MatchCandidate]` con puntaje. Hipótesis por defecto (ajustar con S1.5–S1.7):
+  - Solo `outflow`, sin factura confirmada, `occurredAt` dentro de `[issuedAt − 2h, issuedAt + 72h]` (o `capturedAt` si no hay `issuedAt`).
+  - **Fuerte:** monto exacto. **Débil:** total de la factura ≤ monto ≤ total × 1.20 (propina).
+  - Auto-asignar solo si hay **exactamente un** candidato fuerte y ninguna otra factura no bloqueada apunta al mismo movimiento. Todo lo demás → `suggested` con la lista ordenada.
+  - El nombre del emisor no decide en v1.1, solo ordena (S1.7).
+- **`LogInvoiceEmailIntent`** ("Log Invoice Email"): mismo orden obligatorio que los otros intents (crudo → parseo → guardar → asignar → guardar). Dedup por `cufe`. Nunca lanza por parseo ni por asignación. **No** notifica en v1.1: la factura es complemento, no pregunta.
+- **Re-asignación** de facturas `unmatched`/`suggested` no bloqueadas al abrir la app y desde Ajustes, para el caso en que el correo llegó antes que el movimiento (o el movimiento se creó a mano después).
+- **UI:**
+  - Bandeja "Facturas sin asignar" (`unmatched` + `suggested`) con contador en la lista. Cada sugerencia: confirmar con un toque, elegir otro movimiento, o descartar.
+  - En el detalle del movimiento: facturas asignadas, link a la DGI, botón "Desasignar".
+- **CSV:** columna nueva `invoiceCUFE` (vacía si no hay). Cambia el golden test de Fase 5.
+- `docs/shortcuts.md`: atajo(s) de factura con el patrón recomendado por S1.
+
+**Fuera de alcance.** Parsear el XML o el PDF (depende de S1.4; si es go reducido, entra con la Share Extension). Notificar facturas. Aprender alias comercio ↔ RUC (candidato v2, con las asignaciones confirmadas como datos de entrenamiento).
+
+**Criterios de aceptación propuestos** (se mueven a `INTENT.md` cuando S1 dé go):
+
+| # | Criterio |
+|---|---|
+| AC-F1 | Llega un correo de factura con total igual a un único pago de las últimas 72 h → queda `autoLinked` a ese movimiento. |
+| AC-F2 | Dos pagos del mismo monto en la ventana → la factura queda `suggested` con ambos candidatos; no se asigna sola. |
+| AC-F3 | Factura sin movimiento que calce → `unmatched` en la bandeja. Al crear después el movimiento a mano y abrir la app → pasa a `suggested` o `autoLinked`. |
+| AC-F4 | Mismo CUFE dos veces → una sola factura. |
+| AC-F5 | Correo de factura que no parsea → se guarda con `rawContent` y `parseStatus = failed`, visible en la bandeja. |
+| AC-F6 | Desasigno una factura auto-asignada → no se vuelve a asignar sola al re-ejecutar el matcher. |
+| AC-F7 | Borro un movimiento con factura → la factura vuelve a la bandeja. |
+| AC-F8 | Un pago con propina (monto > total, ≤ 20 %) → aparece como sugerencia, no como auto-asignación. |
+
+**Pruebas automáticas.** `InvoiceEmailParser` con los fixtures reales de S1. `InvoiceMatcher` con tabla de casos: exacto único, exacto duplicado, propina, fuera de ventana, `inflow` ignorado, movimiento con factura confirmada ignorado, factura bloqueada ignorada. `CaptureService`/intent de factura con container en memoria: dedup por CUFE, crudo guardado antes de parsear, el fallo del matcher no impide la captura.
+
+**Gate de salida.**
+- [ ] Tests verdes, incluido el golden de CSV actualizado.
+- [ ] 📱 Una compra real con factura por correo → queda asignada sin abrir la app durante el flujo.
+- [ ] 📱 AC-F2, AC-F6 y AC-F7 en dispositivo.
+- [ ] Los intents de tarjeta y Yappy no cambiaron (diff vacío en esos archivos).
+
+**Riesgos.** Falsos positivos del trigger por asunto (promociones con "factura" en el asunto) → terminan como `failed` en la bandeja; si son muchos, se agrega un filtro por remitente. El total con ITBMS vs. el monto cobrado debería coincidir, pero redondeos o cargos por servicio pueden romper el "monto exacto"; S1.5 lo mide.
+
+---
+
 ## 4. Trazabilidad AC → Fase
 
 | AC | Descripción corta | Prueba automática | Verificación 📱 |
@@ -340,3 +460,5 @@ Los cuerpos deben ser **reales**, copiados desde Mail (seleccionar todo el cuerp
 | Q3 | Formato exacto del `Amount` que entrega el trigger de Wallet hoy (revisar el CSV viejo: ¿`3.80`, `$3.80`, `B/.3.80`?). | F1 (fixtures), F2 |
 | Q4 | Confirmar C1–C9 o indicar cuáles cambian. | F0 (C1, C2), F5, F6 |
 | Q5 | ¿La lista muestra montos de `partial` con `amount = 0` como `$0.00` o como "—"? Default: "—" con el badge de revisión. | F0 |
+| Q6 | Para S1: ¿qué cuenta(s) de correo reciben las facturas? El trigger de Shortcuts solo ve cuentas configuradas en Mail del iPhone. | S1 |
+| Q7 | ¿Es aceptable que una factura se asigne sola sin avisar (AC-F1), o toda asignación debe confirmarse a mano al principio? Default: auto-asignar solo con candidato único exacto. | F8 |

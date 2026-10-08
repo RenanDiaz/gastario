@@ -33,10 +33,43 @@ Hoy esto vive en dos automatizaciones de Shortcuts que escriben CSVs en iCloud D
 
 - Leer Wallet o Mail directamente (FinanceKit no cubre tarjetas de Panamá). La captura sigue en Shortcuts.
 - **Share Extension** para adjuntar desde Mail/Files → v1.1. El App Group de v1 la deja preparada.
-- Parsear XML de factura electrónica o conciliarla automáticamente con un movimiento.
+- Parsear XML de factura electrónica o conciliarla automáticamente con un movimiento → candidato v1.1, ver [Facturas electrónicas por correo](#facturas-electrónicas-por-correo-candidato-v11).
 - Importar CSVs viejos → v1.1, después de validar que la captura nueva no pierde nada.
 - Categorías fijas → v2, derivadas de ~2 meses de notas libres reales.
 - Sincronización iCloud/CloudKit, widgets, presupuestos, multi-moneda (todo es USD).
+
+## Facturas electrónicas por correo (candidato v1.1)
+
+### Idea
+
+Con la factura electrónica en Panamá, muchos comercios envían la factura por correo después de la compra. Gastario debería **atrapar esos correos y asignar la factura al movimiento correspondiente** sin que yo tenga que buscarla y adjuntarla a mano.
+
+### Por qué
+
+- Hoy el adjunto de factura (v1) es manual: escanear el QR o importar el PDF. Funciona, pero casi nunca lo voy a hacer en el momento.
+- El correo ya llega solo. Es la misma forma de captura que Yappy: un atajo con trigger de email que pasa el contenido a un intent.
+
+### Cómo encaja con los principios
+
+- **Nunca perder una captura (1).** Un correo de factura se guarda aunque no se pueda parsear ni asignar. Una factura sin movimiento queda en una bandeja "Facturas sin asignar"; nunca se descarta.
+- **Captura primero, parseo después (2).** Se guarda el contenido crudo antes de parsear. Parseo y asignación son pasos separados y re-ejecutables.
+- **Lo que yo edito, el parser no lo pisa (3).** Una asignación que hago o deshago a mano no la cambia la asignación automática.
+- **Los adjuntos nunca tocan el camino de captura (4).** Los intents de tarjeta y Yappy no cambian ni saben que existen facturas. La factura es su **propia** captura, con su propio intent; la asignación corre después, del lado de la factura.
+
+### Lo que no sabemos todavía (requiere spike)
+
+- Qué remitentes envían facturas: ¿el comercio, el PAC que la emite, o ambos? ¿Hay un patrón de asunto o remitente estable para armar el trigger del atajo?
+- Qué llega al atajo: ¿el cuerpo trae CUFE, total, RUC, fecha y link de consulta de la DGI, o todo eso vive solo en el PDF (CAFE) o XML adjunto? ¿El `Email` del trigger expone los adjuntos?
+- Si el total de la factura coincide con el monto cobrado (propina agregada después, pagos divididos, cargos en dólares vs. lo que muestra Wallet).
+- Si el nombre del emisor en la factura (razón social) se parece al `counterparty` que entrega Wallet (nombre comercial). Probablemente no, y la asignación tendrá que basarse en monto y hora.
+- Cuánto tarda el correo en llegar después del pago.
+
+### Resultado esperado
+
+1. Llega un correo de factura → se guarda como factura con su contenido crudo.
+2. Si hay **un solo** movimiento de salida que calza (monto exacto, ventana de tiempo) → se asigna automáticamente.
+3. Si hay varios candidatos o ninguno exacto → queda como sugerencia en la bandeja, y yo confirmo con un toque.
+4. Desde el detalle del movimiento veo la factura asignada y puedo abrir el link de la DGI o el PDF.
 
 ## Modelo de datos
 
