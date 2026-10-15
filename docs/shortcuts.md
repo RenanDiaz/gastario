@@ -31,12 +31,15 @@ Automatización personal **Email**: *When I get an email* con remitente `notific
 
 ```
 Repeat with each item in Email
-    Append to Text File      ← la acción actual del CSV viejo, sin cambios
-    Log Yappy Email
-        Content → Repeat Item → Content
+    If Repeat Item → Sender is notificaciones@yappy.com.pa
+        Append to Text File      ← la acción actual del CSV viejo, sin cambios
+        Log Yappy Email
+            Content → Repeat Item → Content
+    End If
 End Repeat
 ```
 
+- **El `If` es obligatorio.** El filtro del trigger decide *si* el atajo corre, pero `Email` trae **todos** los correos que llegaron en ese lote. Sin el `If`, un correo de otro remitente que llega junto con el de Yappy (por ejemplo, el recibo del comercio) entra como movimiento `failed`. Si `Sender` incluye el nombre ("Yappy <notificaciones@…>"), usa *contains* con la dirección completa.
 - La salida del trigger es `Email`, **no** `Shortcut Input`.
 - `Content` entrega el **HTML** del correo; Gastario lo guarda tal cual y lo convierte a texto al parsear.
 - El trigger filtra solo por remitente: también entran los correos de Yappy Comercial de la cuenta del negocio, que se registran como ingresos ([`INTENT.md`, Decisiones](../INTENT.md#decisiones)).
@@ -45,7 +48,7 @@ End Repeat
 ## Verificación (gate de la Fase 2)
 
 1. Paga algo con Apple Pay **sin abrir Gastario**. Ábrela después: el movimiento está en la lista.
-2. Recibe o envía un Yappy: aparece.
+2. Recibe o envía un Yappy: aparece. Si el comercio manda además su recibo por correo, ese recibo **no** aparece.
 3. En Atajos, corre la automatización de correo a mano dos veces sobre el mismo correo: un solo movimiento.
 4. El CSV viejo tiene las filas nuevas.
 5. Cierra Gastario desde el switcher y repite 1: el intent corre igual con la app terminada.
