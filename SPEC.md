@@ -25,6 +25,8 @@ Huecos encontrados al convertir el intent en fases. Cada uno tiene una decisión
 | C7 | Un QR que no contenga URL no cabe en `kind: link`. | Se rechaza con mensaje "El QR no contiene un link". Los QR de factura electrónica de la DGI son URLs; si aparece un caso real distinto, se amplía en v1.1. | 6 |
 | C8 | Imágenes sin límite inflan el almacenamiento externo. | Fotos se guardan como JPEG calidad 0.8, lado mayor máximo 2048 px. PDFs sin tocar. | 6 |
 | C9 | El resumen mensual no dice qué mes ni qué zona horaria. | Mes calendario actual en `America/Panama`. Neto = entradas − salidas. Incluye todos los `parseStatus`. | 4 |
+| C10 | Los correos reales muestran formatos que el intent no listaba: `Content` llega en HTML, existe "Pagaste por Yappy / Pagado a" y llegan correos de Yappy Comercial. | **Confirmado e incorporado a `INTENT.md`.** El parser convierte HTML a texto sin WebKit; "Pagaste" → `outflow`; Yappy Comercial → `inflow`. | 1 |
+| C11 | Un pago de la cuenta personal al propio negocio llega dos veces con la misma `confirmation`; deduplicar solo por `confirmation` pierde uno. | **Confirmado e incorporado a `INTENT.md`.** Clave de deduplicación = `confirmation` + `direction`. | 2 |
 
 ## 3. Arquitectura y convenciones (aplican a todas las fases)
 
@@ -76,7 +78,7 @@ Por qué dos paquetes y no uno: un agente que corre en la nube (Linux) puede des
 | 6 | Adjuntos | Foto, PDF, link y QR por movimiento | 15, 19, 20 | 4 |
 | 7 | Transición | Shortcuts viejos retirados con evidencia | — | 3 + 2–3 semanas |
 
-Las fases 0 y 1 son independientes y pueden correr en paralelo (dos agentes, dos ramas).
+Las fases 0 y 1 pueden correr en paralelo (dos agentes, dos ramas). La Fase 1 es dueña de `Packages/GastarioParsing`; la Fase 0 no lo crea.
 
 ---
 
@@ -86,7 +88,7 @@ Las fases 0 y 1 son independientes y pueden correr en paralelo (dos agentes, dos
 
 **Alcance.**
 - `project.yml` (XcodeGen) con bundle id y capability **App Groups** (`group.<bundle-id>`). iCloud Documents se habilita en Fase 5 (es solo un toggle, no una migración).
-- Paquetes `GastarioParsing` (vacío, con un test placeholder) y `GastarioCore`.
+- Paquete `GastarioCore`, que depende de `GastarioParsing` (lo crea la Fase 1; si la Fase 0 empieza antes de mergearla, se basa en su rama).
 - Modelos `Movement` y `Attachment` según `INTENT.md` + C1 + C2. Relación `attachments` con `deleteRule: .cascade`. **Sin** `@Attribute(.unique)` en `confirmation`.
 - `GastarioStore.makeContainer(inMemory: Bool) -> ModelContainer`. En disco apunta a `FileManager.containerURL(forSecurityApplicationGroupIdentifier:)`. Falla en voz alta (`fatalError` con mensaje) si el App Group no está disponible: es un error de configuración, no de runtime.
 - `MovementListView` de solo lectura con `@Query`, agrupada por día en `America/Panama`, orden `occurredAt` descendente. Muestra contraparte, monto con signo, ícono de fuente, badges "sin nota" y "requiere revisión".
@@ -132,9 +134,11 @@ Las fases 0 y 1 son independientes y pueden correr en paralelo (dos agentes, dos
 - Tipos de salida (`ParsedCard`, `ParsedYappy`, `ParseStatus`, `ParseIssue`, `Direction`) viven aquí y `GastarioCore` los reexporta o mapea.
 
 **Fixtures.** `Tests/GastarioParsingTests/Fixtures/Yappy/`:
-- `sent-with-message.txt`, `sent-without-message.txt`, `received.txt`, `amount-with-comma.txt`.
-- Variantes de fecha: `date-nbsp.txt` (U+00A0), `date-narrow-nbsp.txt` (U+202F), `date-plain.txt`.
+- HTML tal como lo entrega `Content`: `sent-with-message.html`, `sent-without-message.html`, `received.html`.
+- Texto plano copiado de Mail (todavía sin HTML de estos tipos): `sent-as-text.txt`, `paid-merchant.txt`, `paid-merchant-with-message.txt`, `commercial-received.txt`, `commercial-online-purchase.txt`.
+- Sintéticos derivados de un real: `amount-with-comma.html`, variantes de fecha `date-narrow-nbsp.html` (U+202F) y `date-plain.html`. La variante U+00A0 es la de los fixtures reales.
 - `unexpected-format.txt` (cuerpo que no es de Yappy).
+- Los datos personales (nombres, teléfonos, confirmaciones, números de pedido, negocio) se reemplazan conservando el formato.
 
 Los cuerpos deben ser **reales**, copiados desde Mail (seleccionar todo el cuerpo → copiar). Cuando exista la vista de cuerpo crudo (Fase 4), se comparan contra lo que llega al intent y se reemplazan si difieren. Hasta recibir los reales, el agente trabaja con fixtures sintéticos marcados `// SYNTHETIC` en el nombre del test; el gate no se cierra con sintéticos.
 
@@ -349,7 +353,7 @@ Los cuerpos deben ser **reales**, copiados desde Mail (seleccionar todo el cuerp
 | # | Pregunta | Bloquea |
 |---|---|---|
 | Q1 | Bundle id y Team ID para el App Group y el ubiquity container. | F0 |
-| Q2 | Tres cuerpos reales de correo Yappy (enviado con mensaje, sin mensaje, recibido), copiados desde Mail. | Gate F1 |
+| Q2 | ~~Tres cuerpos reales de correo Yappy (enviado con mensaje, sin mensaje, recibido), copiados desde Mail.~~ **Resuelta:** recibidos en HTML (lo que entrega `Content`), más pago a comercio y Yappy Comercial en texto. Ver C10. | Gate F1 |
 | Q3 | Formato exacto del `Amount` que entrega el trigger de Wallet hoy (revisar el CSV viejo: ¿`3.80`, `$3.80`, `B/.3.80`?). | F1 (fixtures), F2 |
 | Q4 | Confirmar C1–C9 o indicar cuáles cambian. | F0 (C1, C2), F5, F6 |
 | Q5 | ¿La lista muestra montos de `partial` con `amount = 0` como `$0.00` o como "—"? Default: "—" con el badge de revisión. | F0 |
