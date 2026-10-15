@@ -24,6 +24,14 @@ struct MovementDetailView: View {
                 LabeledContent("Fecha", value: MovementPresentation.timestampText(movement.occurredAt))
             }
 
+            Section("Nota") {
+                Text(movement.note ?? "Sin nota")
+                    .foregroundStyle(movement.hasNote ? .primary : .secondary)
+                if let notedAt = movement.notedAt {
+                    LabeledContent("Anotada", value: MovementPresentation.timestampText(notedAt))
+                }
+            }
+
             Section("Captura") {
                 LabeledContent("Fuente", value: movement.source.rawValue)
                 LabeledContent("Estado", value: movement.parseStatus.rawValue)

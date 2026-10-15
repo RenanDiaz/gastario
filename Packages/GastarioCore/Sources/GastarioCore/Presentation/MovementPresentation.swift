@@ -29,8 +29,12 @@ public enum MovementPresentation {
     /// leer (issue `amount`, guardado como `0`) se muestra como `—` (SPEC §5, Q5).
     public static func amountText(amount: Decimal, direction: Direction, issues: Set<ParseIssue>) -> String {
         if issues.contains(.amount) && amount == 0 { return "—" }
-        let formatted = amount.formatted(.currency(code: "USD").locale(Locale(identifier: "en_US")))
-        return (direction == .outflow ? "-" : "+") + formatted
+        return (direction == .outflow ? "-" : "+") + currencyText(amount)
+    }
+
+    /// `$3.80`, `$1,250.00`: todo es USD (`INTENT.md`).
+    public static func currencyText(_ amount: Decimal) -> String {
+        amount.formatted(.currency(code: "USD").locale(Locale(identifier: "en_US")))
     }
 
     public static func amountText(for movement: Movement) -> String {

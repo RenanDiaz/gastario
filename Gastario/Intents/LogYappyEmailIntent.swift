@@ -18,8 +18,7 @@ struct LogYappyEmailIntent: AppIntent {
         // Diagnóstico: un Content incompleto (sin cuerpo) produce un movimiento sin confirmación.
         Logger.app.info("Yappy: Content con \(content?.count ?? 0) caracteres")
         // Solo lanza si el store no responde: un fallo de parseo se guarda igual (principio 1).
-        let outcome = try await CaptureService(container: SharedModelContainer.container)
-            .captureYappy(content: content ?? "")
+        let outcome = try await SharedModelContainer.captureService().captureYappy(content: content ?? "")
         Logger.app.info("Yappy capturado: \(String(describing: outcome), privacy: .public)")
         return .result()
     }

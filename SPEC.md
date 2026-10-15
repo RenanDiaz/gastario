@@ -27,6 +27,7 @@ Huecos encontrados al convertir el intent en fases. Cada uno tiene una decisión
 | C9 | El resumen mensual no dice qué mes ni qué zona horaria. | Mes calendario actual en `America/Panama`. Neto = entradas − salidas. Incluye todos los `parseStatus`. | 4 |
 | C10 | Los correos reales muestran formatos que el intent no listaba: `Content` llega en HTML, existe "Pagaste por Yappy / Pagado a" y llegan correos de Yappy Comercial. | **Confirmado e incorporado a `INTENT.md`.** El parser convierte HTML a texto sin WebKit; "Pagaste" → `outflow`; Yappy Comercial → `inflow`. | 1 |
 | C12 | **Confirmado e incorporado a `INTENT.md`.** `INTENT.md` decía iOS 27, pero los runners de GitHub (`macos-26`) solo traen Xcode 26.x con SDK de iOS 26.5; con deployment target 27 el job `macos` no puede compilar la app. Ninguna API que pide el intent es exclusiva de iOS 27. | Deployment target **iOS 26.0**, compilado con Xcode 26.x en CI. La app corre igual en iOS 27 y se puede compilar localmente con Xcode 27. Se sube a 27 cuando GitHub ofrezca Xcode 27. | 0 |
+| C13 | **Cambio propuesto.** `INTENT.md` no define el texto de la notificación para una tarjeta `failed` (el parser lanzó) ni para un Yappy `partial` sin contraparte, ni los títulos. | Tarjeta `failed`: "No pude leer un pago con tarjeta, revísalo en la app." Sin contraparte: la pregunta sin el "en …" ("¿En qué gastaste $49.06?"). Títulos: "Gasto", "Ingreso", "Revisar movimiento". | 3 |
 | C11 | Un pago de la cuenta personal al propio negocio llega dos veces con la misma `confirmation`; deduplicar solo por `confirmation` pierde uno. | **Confirmado e incorporado a `INTENT.md`.** Clave de deduplicación = `confirmation` + `direction`. | 2 |
 
 ## 3. Arquitectura y convenciones (aplican a todas las fases)
@@ -208,9 +209,12 @@ Los cuerpos deben ser **reales**, copiados desde Mail (seleccionar todo el cuerp
 - `GastarioCore/Notifications/NoteReplyHandler.handle(movementID:text:)`: busca, asigna `note` y `notedAt`, guarda. El `completionHandler` del delegate se llama **después** del `await` de este método.
 - Movimientos `manual` no notifican (el `CaptureService` no participa en la entrada manual; se cubre en Fase 4).
 - Reemplazar el no-op de Fase 2 por `NotificationService`.
+- Swift 6: los métodos del delegate son `nonisolated` y solo pasan valores `Sendable` al `MainActor`; permiso y programación usan las APIs `async` desde funciones `nonisolated` (un completion handler creado en el `MainActor` y llamado desde otro hilo falla la verificación de aislamiento).
+- El detalle de solo lectura muestra `note` y `notedAt`, para verificar AC-8 en el dispositivo.
 
 **Pruebas automáticas.**
-- `NotificationText` para los 6 casos: salida, entrada, tarjeta sin monto, sin comercio, sin ambos, Yappy `failed`.
+- `NotificationText` para los 6 casos: salida, entrada, tarjeta sin monto, sin comercio, sin ambos, Yappy `failed`. Más los de C13 y un monto con coma.
+- `NotificationText` recibe valores simples (con una sobrecarga para `Movement`), así se prueba también fuera de SwiftData.
 - `NoteReplyHandler` con container en memoria: guarda `note` y `notedAt`; con un ID inexistente no lanza.
 
 **Gate de salida.**
