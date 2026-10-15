@@ -24,7 +24,7 @@ struct LogCardMovementIntent: AppIntent {
             merchant: merchant ?? "", amount: amount ?? "", cardName: cardName ?? "",
             city: city, latitude: latitude, longitude: longitude)
         // Solo lanza si el store no responde: un fallo de parseo se guarda igual (principio 1).
-        let outcome = try await CaptureService(container: SharedModelContainer.container).captureCard(inputs)
+        let outcome = try await SharedModelContainer.captureService().captureCard(inputs)
         Logger.app.info("Tarjeta capturada: \(String(describing: outcome), privacy: .public)")
         return .result()
     }

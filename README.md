@@ -6,7 +6,7 @@ App iOS que registra cada pago con Apple Pay y cada Yappy, y permite anotar en q
 
 ## Estado
 
-Fases 0 (fundación) y 1 (parsers) cerradas. Fase 2 (captura con App Intents) implementada; falta configurar los atajos ([`docs/shortcuts.md`](docs/shortcuts.md)) y verificar su gate en el iPhone. Después sigue la Fase 3, notificaciones ([`SPEC.md` §3, mapa de fases](SPEC.md#mapa-de-fases)).
+Fases 0 (fundación) y 1 (parsers) cerradas. Fases 2 (captura con App Intents, [`docs/shortcuts.md`](docs/shortcuts.md)) y 3 (notificaciones con respuesta) implementadas; falta verificar sus gates en el iPhone. Después sigue la Fase 4, revisión y edición ([`SPEC.md` §3, mapa de fases](SPEC.md#mapa-de-fases)).
 
 ## Requisitos
 

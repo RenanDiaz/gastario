@@ -12,4 +12,9 @@ enum SharedModelContainer {
         Logger.app.info("Store: \(GastarioStore.storeURL().path(percentEncoded: false), privacy: .public)")
         return container
     }()
+
+    /// El pipeline de captura de los intents, con las notificaciones de la Fase 3.
+    static func captureService() -> CaptureService {
+        CaptureService(container: container, notifier: NotificationService(container: container))
+    }
 }

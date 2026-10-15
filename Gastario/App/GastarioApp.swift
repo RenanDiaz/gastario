@@ -5,6 +5,8 @@ import SwiftUI
 
 @main
 struct GastarioApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
     var body: some Scene {
         WindowGroup {
             MovementListView()
