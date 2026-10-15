@@ -6,14 +6,14 @@ App iOS que registra cada pago con Apple Pay y cada Yappy, y permite anotar en q
 
 ## Estado
 
-Fase 1 (parsers) cerrada: `GastarioParsing` con fixtures reales de Yappy. Sigue la Fase 0 ([`SPEC.md` §3, mapa de fases](SPEC.md#mapa-de-fases)), bloqueada por Q1, Q4 y Q5 ([§5](SPEC.md#5-preguntas-abiertas-bloquean-la-fase-indicada)).
+Fase 1 (parsers) cerrada. Fase 0 (fundación) implementada: proyecto con XcodeGen, modelos SwiftData en el App Group y lista de solo lectura; falta la verificación en el iPhone de su gate. Después sigue la Fase 2, captura con App Intents ([`SPEC.md` §3, mapa de fases](SPEC.md#mapa-de-fases)).
 
 ## Requisitos
 
 | | Versión |
 |---|---|
-| Mac de build | Xcode con el SDK de iOS 27 (Swift 6) |
-| App | iOS 27 (iPhone) |
+| Mac de build | Xcode 26 o posterior (Swift 6) |
+| App | iOS 26+ (iPhone); deployment target en [`SPEC.md` §2, C12](SPEC.md#2-cambios-propuestos-a-intentmd) |
 | Herramientas | [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`) |
 
 ## Primeros pasos
@@ -23,10 +23,12 @@ Fase 1 (parsers) cerrada: `GastarioParsing` con fixtures reales de Yappy. Sigue 
 cp Configs/Local.xcconfig.example Configs/Local.xcconfig
 #    edita DEVELOPMENT_TEAM con tu Team ID
 
-# 2. Generar el proyecto (desde la Fase 0)
+# 2. Generar el proyecto
 xcodegen generate
 open Gastario.xcodeproj
 ```
+
+Con el Team ID puesto y firma automática, Xcode registra el App Group `group.com.renandiaz.Gastario` la primera vez que compilas en el iPhone. En la consola de Xcode, el arranque imprime la ruta del store: debe contener `Shared/AppGroup`.
 
 Vuelve a correr `xcodegen generate` cada vez que agregues o quites archivos o cambies `project.yml`.
 

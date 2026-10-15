@@ -19,3 +19,6 @@ Configs/Local.xcconfig
 
 # Salida de scripts/verify.sh
 build/
+
+# Generado por XcodeGen desde project.yml
+Gastario/Gastario.entitlements

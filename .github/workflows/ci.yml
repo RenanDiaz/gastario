@@ -17,7 +17,7 @@ jobs:
     container: swift:6.4.1-noble
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Versión de Swift
         run: swift --version
       - name: Verificar (Linux)
@@ -28,7 +28,7 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Versión de Xcode
         run: xcodebuild -version && swift --version
       - name: Instalar XcodeGen
