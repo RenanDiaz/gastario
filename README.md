@@ -42,7 +42,7 @@ open Gastario.xcodeproj
 
 Con el Team ID puesto y firma automática, Xcode registra el App Group `group.com.renandiaz.Gastario` la primera vez que compilas en el iPhone. En la consola de Xcode, el arranque imprime la ruta del store: debe contener `Shared/AppGroup`.
 
-Lo mismo pasa con el contenedor de iCloud `iCloud.com.renandiaz.Gastario`, que usa el respaldo. Si la carpeta "Gastario" no aparece en Archivos → iCloud Drive después del primer export, sube `CURRENT_PROJECT_VERSION` en `Configs/Base.xcconfig` y reinstala: iOS solo vuelve a leer `NSUbiquitousContainers` cuando cambia el número de build.
+Lo mismo pasa con el contenedor de iCloud `iCloud.com.renandiaz.Gastario`, que usa el respaldo. **Con un equipo personal (cuenta gratis)** Xcode no puede firmar: "Personal development teams … do not support the iCloud capability". Mientras tanto, descomenta `GASTARIO_ENTITLEMENTS` en tu `Configs/Local.xcconfig` (ver `Local.xcconfig.example`): la app firma sin iCloud, el respaldo automático queda deshabilitado y "Exportar ahora" sigue ofreciendo el CSV para compartir. Si la carpeta "Gastario" no aparece en Archivos → iCloud Drive después del primer export, sube `CURRENT_PROJECT_VERSION` en `Configs/Base.xcconfig` y reinstala: iOS solo vuelve a leer `NSUbiquitousContainers` cuando cambia el número de build.
 
 Vuelve a correr `xcodegen generate` cada vez que agregues o quites archivos o cambies `project.yml`.
 
@@ -71,7 +71,7 @@ Si falta `project.yml` o alguno de los dos paquetes, `verify.sh` falla: no omite
 gastario/
 ├── INTENT.md, SPEC.md       # qué y por qué / cómo y en qué orden
 ├── project.yml              # XcodeGen: fuente de verdad del proyecto
-├── Configs/                 # xcconfig compartido; Local.xcconfig (Team ID) fuera de git
+├── Configs/                 # xcconfig y entitlements (con y sin iCloud); Local.xcconfig fuera de git
 ├── Gastario/                # target iOS
 │   ├── App/                 # arranque, AppDelegate, contenedor SwiftData en el App Group
 │   ├── Intents/             # App Intents de captura (tarjeta y Yappy)

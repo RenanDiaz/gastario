@@ -32,7 +32,7 @@ La descripción del PR dice qué cambió en el README o, si nada, "README: sin c
 
 ## Proyecto y verificación
 
-- El `.xcodeproj` **no se versiona**: se genera con `xcodegen generate` desde `project.yml`. Targets, capabilities (App Groups, iCloud) y entitlements se cambian en `project.yml`, nunca en el `pbxproj`.
+- El `.xcodeproj` **no se versiona**: se genera con `xcodegen generate` desde `project.yml`. Targets y ajustes se cambian en `project.yml`, nunca en el `pbxproj`. Las capabilities (App Groups, iCloud) viven en `Configs/Gastario.entitlements` y en su variante `Configs/Gastario-SinICloud.entitlements`; `Configs/Base.xcconfig` elige cuál.
 - Antes de hacer push, corre `scripts/verify.sh`. Es lo mismo que corre CI.
 - **En la nube (Linux)** solo existe Swift para Linux: `verify.sh` prueba `GastarioParsing` y nada más. `GastarioCore` (SwiftData) y la app solo se verifican en macOS; para eso está el job `macos` de CI. No declares verde lo que no pudiste correr: di qué verificó Linux y qué queda para CI.
 - `GastarioParsing` solo importa `Foundation`. `verify.sh` lo hace cumplir.

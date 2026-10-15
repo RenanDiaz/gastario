@@ -5,6 +5,10 @@ CURRENT_PROJECT_VERSION = 1
 
 CODE_SIGN_STYLE = Automatic
 
+// Capabilities del target Gastario. Con iCloud Documents para el respaldo (SPEC Fase 5).
+// Los equipos personales (cuenta gratis) no admiten iCloud: ver Local.xcconfig.example.
+GASTARIO_ENTITLEMENTS = Configs/Gastario.entitlements
+
 // Opcional y fuera de git: DEVELOPMENT_TEAM y otros ajustes personales.
 // Copia Local.xcconfig.example a Local.xcconfig.
 #include? "Local.xcconfig"
