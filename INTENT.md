@@ -156,7 +156,9 @@ Log Card Transaction (Merchant, Amount, Card or Pass, City, Latitude, Longitude)
 Yappy:
 When I receive an email where Sender is notificaciones@yappy.com.pa
 Repeat with each item in [Email]
-   Log Yappy Email (Repeat Item → Content)
+   If Repeat Item → Sender is notificaciones@yappy.com.pa
+      Log Yappy Email (Repeat Item → Content)
+   End If
 End Repeat
 ```
 
@@ -247,6 +249,7 @@ End Repeat
 - Requiere cuenta de Apple Developer pagada para uso diario (con cuenta gratis la app expira a los 7 días).
 - Requiere capabilities: App Groups e iCloud Documents.
 - Los triggers de Shortcuts en iOS 27 son bloques dentro del atajo. La salida del trigger de email es `Email`, **no** `Shortcut Input`.
+- El filtro del trigger de email decide si el atajo corre, pero `Email` trae todos los correos del lote: el remitente se vuelve a validar dentro del `Repeat`. Visto en dispositivo: el recibo de un comercio que llegó junto con el Yappy entró como movimiento `failed`.
 - El trigger de Wallet se dispara con el **tap**, no con la aprobación. Un pago rechazado igual genera un movimiento → se borra a mano.
 - El trigger puede no disparar o llegar con datos vacíos. La entrada manual y el estado `partial` cubren ambos casos.
 

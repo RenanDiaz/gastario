@@ -190,6 +190,7 @@ Los cuerpos deben ser **reales**, copiados desde Mail (seleccionar todo el cuerp
 - [ ] 📱 Ambos atajos configurados según `docs/shortcuts.md`. Pagar con Apple Pay → el movimiento aparece en la lista sin abrir la app durante el pago.
 - [ ] 📱 Recibir un Yappy → aparece. Correr el atajo de email dos veces sobre el mismo correo → un solo movimiento.
 - [ ] 📱 El CSV viejo sigue recibiendo filas (el Append va antes del intent).
+- [ ] 📱 Un correo de otro remitente que llega junto con un Yappy no crea movimiento (`If` del remitente dentro del `Repeat`).
 
 **Riesgos.** El trigger de Wallet puede entregar `Merchant` vacío o `Amount = 0`; los formatos reales de `Amount` deben agregarse a los fixtures de Fase 1 en cuanto se observen. Verificar que el intent corre con la app terminada desde el switcher.
 
