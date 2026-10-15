@@ -1,6 +1,44 @@
 import Foundation
 import GastarioParsing
 
+/// Filtros de la lista (SPEC Fase 4).
+public enum MovementFilter: String, CaseIterable, Identifiable, Sendable {
+    case all
+    case noNote
+    case needsReview
+
+    public var id: Self { self }
+
+    public var title: String {
+        switch self {
+        case .all: "Todos"
+        case .noNote: "Sin nota"
+        case .needsReview: "Revisar"
+        }
+    }
+
+    /// "Sin nota" incluye también los manuales sin nota; "Revisar" es `parseStatus != ok`.
+    public func matches(hasNote: Bool, status: ParseStatus) -> Bool {
+        switch self {
+        case .all: true
+        case .noNote: !hasNote
+        case .needsReview: status != .ok
+        }
+    }
+}
+
+/// Totales de un mes calendario en Panamá (SPEC §2, C9).
+public struct MonthlySummary: Equatable, Sendable {
+    public var outflow: Decimal
+    public var inflow: Decimal
+    public var net: Decimal { inflow - outflow }
+
+    public init(outflow: Decimal = 0, inflow: Decimal = 0) {
+        self.outflow = outflow
+        self.inflow = inflow
+    }
+}
+
 /// Movimientos de un mismo día calendario en Panamá.
 public struct DayGroup<Item>: Identifiable {
     public let day: Date
@@ -23,6 +61,33 @@ public enum MovementPresentation {
         return groups
             .map { DayGroup(day: $0.key, items: $0.value) }
             .sorted { $0.day > $1.day }
+    }
+
+    /// Resumen del mes calendario que contiene `date`, en `America/Panama`. Incluye todos los
+    /// `parseStatus` (C9).
+    public static func monthlySummary<Item>(
+        _ items: [Item], containing date: Date,
+        amount: (Item) -> Decimal, direction: (Item) -> Direction, occurredAt: (Item) -> Date
+    ) -> MonthlySummary {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        guard let month = calendar.dateInterval(of: .month, for: date) else { return MonthlySummary() }
+        var summary = MonthlySummary()
+        // Semiabierto: el final del intervalo ya es el primer instante del mes siguiente.
+        for item in items where occurredAt(item) >= month.start && occurredAt(item) < month.end {
+            switch direction(item) {
+            case .outflow: summary.outflow += amount(item)
+            case .inflow: summary.inflow += amount(item)
+            }
+        }
+        return summary
+    }
+
+    /// "octubre de 2026".
+    public static func monthTitle(_ date: Date) -> String {
+        var style = Date.FormatStyle().month(.wide).year()
+        style.timeZone = timeZone
+        return date.formatted(style.locale(Locale(identifier: "es_PA")))
     }
 
     /// Monto con signo: `-$3.80` para salidas, `+$600.00` para entradas. Un monto que no se pudo
