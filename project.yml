@@ -46,6 +46,8 @@ targets:
         # Configs/Base.xcconfig; un equipo personal sin iCloud lo cambia en Local.xcconfig.
         CODE_SIGN_ENTITLEMENTS: $(GASTARIO_ENTITLEMENTS)
         INFOPLIST_KEY_CFBundleDisplayName: Gastario
+        # Ícono en Gastario/Assets.xcassets (variantes clara, oscura y tintada); fuente en docs/marca/.
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: YES
         SWIFT_VERSION: "6.0"
         SWIFT_STRICT_CONCURRENCY: complete

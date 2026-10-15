@@ -1,5 +1,10 @@
 # Gastario
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/marca/lockup-gastario-oscuro.svg">
+  <img src="docs/marca/lockup-gastario.svg" alt="Gastario" height="64">
+</picture>
+
 App iOS que registra cada pago con Apple Pay y cada Yappy, y permite anotar en qué fue cada movimiento respondiendo desde la notificación.
 
 > **Documentos del proyecto.** El qué y el porqué están en [`INTENT.md`](INTENT.md); el cómo y el orden, en [`SPEC.md`](SPEC.md). Este README solo explica cómo compilar y verificar. Si contradice al spec, gana el spec.
@@ -73,17 +78,21 @@ gastario/
 ├── project.yml              # XcodeGen: fuente de verdad del proyecto
 ├── Configs/                 # xcconfig y entitlements (con y sin iCloud); Local.xcconfig fuera de git
 ├── Gastario/                # target iOS
+│   ├── Assets.xcassets/     # ícono de la app (clara, oscura, tintada)
 │   ├── App/                 # arranque, AppDelegate, contenedor SwiftData en el App Group
 │   ├── Intents/             # App Intents de captura (tarjeta y Yappy)
 │   ├── Notifications/       # notificaciones con respuesta
 │   ├── Movements/           # lista, detalle, edición y entrada manual
 │   ├── Export/              # respaldo semanal del CSV en iCloud Drive
+│   ├── Attachments/         # adjuntos: foto, PDF, link y QR
 │   ├── Settings/
 │   └── Debug/
 ├── Packages/
 │   ├── GastarioParsing/     # parsers puros, solo Foundation, probados también en Linux
 │   └── GastarioCore/        # SwiftData y servicios, solo plataformas Apple
-├── docs/shortcuts.md        # cómo configurar los atajos de captura
+├── docs/
+│   ├── shortcuts.md         # cómo configurar los atajos de captura
+│   └── marca/               # ícono y lockup en SVG, capas para Icon Composer
 ├── scripts/verify.sh
 ├── .github/workflows/ci.yml # jobs linux y macos
 └── .claude/                 # hook de inicio para sesiones en la nube
