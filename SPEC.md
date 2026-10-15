@@ -102,7 +102,7 @@ Las fases 0 y 1 pueden correr en paralelo (dos agentes, dos ramas). La Fase 1 es
 - `Packages/GastarioCore/Sources/GastarioCore/Models/{Movement,Attachment,Enums}.swift`
 - `Packages/GastarioCore/Sources/GastarioCore/Store/GastarioStore.swift`
 - `Gastario/App/GastarioApp.swift`, `Gastario/Movements/MovementListView.swift`
-- `project.yml` con la capability App Groups. `Gastario/Gastario.entitlements` lo genera XcodeGen a partir de `project.yml` y no se versiona.
+- `project.yml` con la capability App Groups. Desde la Fase 5 las capabilities viven en `Configs/Gastario.entitlements` (versionado) y `Configs/Base.xcconfig` elige el archivo.
 - README corto en cada paquete: cómo correr `swift test`.
 - `scripts/verify.sh` sin la tolerancia a partes faltantes: si un paquete o `project.yml` no existe, falla.
 
@@ -268,7 +268,7 @@ Los cuerpos deben ser **reales**, copiados desde Mail (seleccionar todo el cuerp
 **Objetivo.** Nunca depender del dispositivo como única copia. El CSV completo se escribe a iCloud Drive cada 7+ días, aunque la app no se abra.
 
 **Alcance.**
-- Capability **iCloud Documents** (ubiquity container `iCloud.com.renandiaz.Gastario`, no CloudKit). `NSUbiquitousContainers` en Info.plist con `NSUbiquitousContainerIsDocumentScopePublic = true` para que la carpeta aparezca en Files. Como es un diccionario, XcodeGen genera `Gastario/Info.plist` desde `project.yml` (no se versiona), con las versiones enlazadas a `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION`.
+- Capability **iCloud Documents** (ubiquity container `iCloud.com.renandiaz.Gastario`, no CloudKit), en `Configs/Gastario.entitlements`. Los equipos personales (cuenta gratis) no admiten iCloud: `Configs/Local.xcconfig` puede elegir `Configs/Gastario-SinICloud.entitlements` (sin respaldo automático; el error queda en Ajustes y la captura no se ve afectada). `NSUbiquitousContainers` en Info.plist con `NSUbiquitousContainerIsDocumentScopePublic = true` para que la carpeta aparezca en Files. Como es un diccionario, XcodeGen genera `Gastario/Info.plist` desde `project.yml` (no se versiona), con las versiones enlazadas a `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION`.
 - `GastarioCore/Export/CSVExporter.export(_ rows: [CSVRow]) -> Data` (filas con valores simples, más `CSVRow(movement)`; se prueba también fuera de SwiftData). Fin de línea CRLF (RFC 4180). Montos con dos decimales y punto: columnas exactas de `INTENT.md`, montos con signo (`outflow` negativo), fechas según C6, escape RFC 4180 (comillas dobles, saltos de línea dentro de `note`), `attachmentCount` = `attachments.count`. Sin BOM.
 - `GastarioCore/Export/BackupPolicy`: `isDue(lastExportAt:now:)` → 7 días. Estado en `UserDefaults` del App Group (C4): `lastExportAt`, `lastExportAttemptAt`, `lastExportError`.
 - `Gastario/Export/BackupService`: implementa `BackupTrigger`. Obtiene `FileManager.url(forUbiquityContainerIdentifier: nil)` **fuera del main actor** (puede bloquear), escribe en `Documents/` con el nombre de C5. Cualquier error se registra en `lastExportError` y **nunca** se propaga al intent.
