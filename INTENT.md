@@ -18,7 +18,7 @@ Hoy esto vive en dos automatizaciones de Shortcuts que escriben CSVs en iCloud D
 
 ## Alcance v1
 
-- App iOS 27, SwiftUI + SwiftData + App Intents + UserNotifications. Solo local, sin backend.
+- App iOS (deployment target 26.0, se usa en iOS 27), SwiftUI + SwiftData + App Intents + UserNotifications. Solo local, sin backend.
 - Dos App Intents invocables desde Shortcuts, ejecutados en segundo plano.
 - Notificación local con respuesta de texto por cada movimiento capturado.
 - Lista, filtros "Sin nota" y "Requiere revisión", detalle editable, exportar CSV.
@@ -86,7 +86,7 @@ Hoy esto vive en dos automatizaciones de Shortcuts que escriben CSVs en iCloud D
 
 ### Ambos intents
 
-- Ejecución en segundo plano con la API vigente (`supportedModes = .background` desde iOS 26). **Verificar contra el SDK de iOS 27 antes de implementar.**
+- Ejecución en segundo plano con la API vigente (`supportedModes = .background` desde iOS 26). **Verificar contra el SDK con que se compila (Xcode 26.x) antes de implementar.**
 - Orden obligatorio:
   1. Guardar crudo.
   2. Parsear.

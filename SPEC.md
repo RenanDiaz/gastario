@@ -26,7 +26,7 @@ Huecos encontrados al convertir el intent en fases. Cada uno tiene una decisión
 | C8 | Imágenes sin límite inflan el almacenamiento externo. | Fotos se guardan como JPEG calidad 0.8, lado mayor máximo 2048 px. PDFs sin tocar. | 6 |
 | C9 | El resumen mensual no dice qué mes ni qué zona horaria. | Mes calendario actual en `America/Panama`. Neto = entradas − salidas. Incluye todos los `parseStatus`. | 4 |
 | C10 | Los correos reales muestran formatos que el intent no listaba: `Content` llega en HTML, existe "Pagaste por Yappy / Pagado a" y llegan correos de Yappy Comercial. | **Confirmado e incorporado a `INTENT.md`.** El parser convierte HTML a texto sin WebKit; "Pagaste" → `outflow`; Yappy Comercial → `inflow`. | 1 |
-| C12 | **Cambio propuesto.** `INTENT.md` dice iOS 27, pero los runners de GitHub (`macos-26`) solo traen Xcode 26.x con SDK de iOS 26.5; con deployment target 27 el job `macos` no puede compilar la app. Ninguna API que pide el intent es exclusiva de iOS 27. | Deployment target **iOS 26.0**, compilado con Xcode 26.x en CI. La app corre igual en iOS 27 y se puede compilar localmente con Xcode 27. Se sube a 27 cuando GitHub ofrezca Xcode 27. | 0 |
+| C12 | **Confirmado e incorporado a `INTENT.md`.** `INTENT.md` decía iOS 27, pero los runners de GitHub (`macos-26`) solo traen Xcode 26.x con SDK de iOS 26.5; con deployment target 27 el job `macos` no puede compilar la app. Ninguna API que pide el intent es exclusiva de iOS 27. | Deployment target **iOS 26.0**, compilado con Xcode 26.x en CI. La app corre igual en iOS 27 y se puede compilar localmente con Xcode 27. Se sube a 27 cuando GitHub ofrezca Xcode 27. | 0 |
 | C11 | Un pago de la cuenta personal al propio negocio llega dos veces con la misma `confirmation`; deduplicar solo por `confirmation` pierde uno. | **Confirmado e incorporado a `INTENT.md`.** Clave de deduplicación = `confirmation` + `direction`. | 2 |
 
 ## 3. Arquitectura y convenciones (aplican a todas las fases)
@@ -52,7 +52,7 @@ Por qué dos paquetes y no uno: un agente que corre en la nube (Linux) puede des
 ### Entorno y verificación
 
 - `scripts/verify.sh` es la única definición de "verde". En macOS corre ambos paquetes y compila la app en Debug y Release sin firmar; en Linux corre solo `GastarioParsing`.
-- CI tiene dos jobs: `linux` (imagen `swift`) y `macos` (Xcode con el SDK de iOS 27). Un PR no se mergea con ninguno en rojo.
+- CI tiene dos jobs: `linux` (imagen `swift`) y `macos` (Xcode 26.x, SDK de iOS 26). Un PR no se mergea con ninguno en rojo.
 - `GastarioParsing` solo importa `Foundation`; `verify.sh` falla si importa otra cosa.
 - Las sesiones de Claude Code en la nube instalan Swift para Linux con `.claude/hooks/session-start.sh`. Ahí se desarrolla y prueba `GastarioParsing`; lo que depende de SwiftData o UIKit se escribe en la nube pero lo verifica el job `macos`.
 
@@ -168,7 +168,7 @@ Los cuerpos deben ser **reales**, copiados desde Mail (seleccionar todo el cuerp
   - `rawInputs` = JSON de `CardRawInputs` (Codable) tal como llegó.
 - `Gastario/Intents/LogCardMovementIntent.swift`, `LogYappyEmailIntent.swift`:
   - Títulos "Log Card Transaction" y "Log Yappy Email".
-  - Modo background con la API vigente del SDK de iOS 27 (en iOS 26 es `supportedModes = .background`; **verificar el nombre exacto antes de escribir código**).
+  - Modo background con `supportedModes = .background` (iOS 26+; verificado: compila con Xcode 26.6).
   - Usan un único container por proceso (compartido con la app) y llaman a `CaptureService`. Devuelven `.result()` siempre que el store responda, también en `.duplicate` y en `failed`.
   - Todos los parámetros son opcionales: uno requerido que llega vacío hace que Atajos pregunte, y en segundo plano eso detiene la captura (principio 1). `nil` se guarda como `""`.
 - Instrucciones para configurar los dos atajos en `docs/shortcuts.md`, copiadas de `INTENT.md`, con el `Append to Text File` **antes** del intent.
