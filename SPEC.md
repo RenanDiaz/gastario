@@ -268,18 +268,20 @@ Los cuerpos deben ser **reales**, copiados desde Mail (seleccionar todo el cuerp
 **Objetivo.** Nunca depender del dispositivo como única copia. El CSV completo se escribe a iCloud Drive cada 7+ días, aunque la app no se abra.
 
 **Alcance.**
-- Capability **iCloud Documents** (ubiquity container, no CloudKit). `NSUbiquitousContainers` en Info.plist con `NSUbiquitousContainerIsDocumentScopePublic = true` para que la carpeta aparezca en Files.
-- `GastarioCore/Export/CSVExporter.export(_ movements:) -> Data`: columnas exactas de `INTENT.md`, montos con signo (`outflow` negativo), fechas según C6, escape RFC 4180 (comillas dobles, saltos de línea dentro de `note`), `attachmentCount` = `attachments.count`. Sin BOM.
+- Capability **iCloud Documents** (ubiquity container `iCloud.com.renandiaz.Gastario`, no CloudKit). `NSUbiquitousContainers` en Info.plist con `NSUbiquitousContainerIsDocumentScopePublic = true` para que la carpeta aparezca en Files. Como es un diccionario, XcodeGen genera `Gastario/Info.plist` desde `project.yml` (no se versiona), con las versiones enlazadas a `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION`.
+- `GastarioCore/Export/CSVExporter.export(_ rows: [CSVRow]) -> Data` (filas con valores simples, más `CSVRow(movement)`; se prueba también fuera de SwiftData). Fin de línea CRLF (RFC 4180). Montos con dos decimales y punto: columnas exactas de `INTENT.md`, montos con signo (`outflow` negativo), fechas según C6, escape RFC 4180 (comillas dobles, saltos de línea dentro de `note`), `attachmentCount` = `attachments.count`. Sin BOM.
 - `GastarioCore/Export/BackupPolicy`: `isDue(lastExportAt:now:)` → 7 días. Estado en `UserDefaults` del App Group (C4): `lastExportAt`, `lastExportAttemptAt`, `lastExportError`.
 - `Gastario/Export/BackupService`: implementa `BackupTrigger`. Obtiene `FileManager.url(forUbiquityContainerIdentifier: nil)` **fuera del main actor** (puede bloquear), escribe en `Documents/` con el nombre de C5. Cualquier error se registra en `lastExportError` y **nunca** se propaga al intent.
 - Puntos de evaluación: paso 6 del `CaptureService` (reemplaza el no-op) y `scenePhase == .active` al abrir la app.
-- Ajustes: fecha del último export, último error si lo hay, "Exportar ahora" (fuerza el export a iCloud **y** ofrece `ShareLink` del mismo archivo).
+- Ajustes: fecha del último export, último error si lo hay, "Exportar ahora" (fuerza el export a iCloud **y** ofrece `ShareLink` del mismo archivo, que se escribe también en el directorio temporal: se puede compartir aunque iCloud falle).
 - `#if DEBUG`: botón "Simular 8 días sin export" que retrocede `lastExportAt`.
 
 **Pruebas automáticas.**
 - Golden test de `CSVExporter` con 3 movimientos (uno con coma y comillas en `note`, uno `inflow`, uno sin ubicación).
 - `BackupPolicy.isDue` en los bordes: 6d23h → no; 7d → sí; nunca exportado → sí.
-- `CaptureService` con un `BackupTrigger` que lanza → la captura igual termina `.created`.
+- ~~`CaptureService` con un `BackupTrigger` que lanza → la captura igual termina `.created`.~~ Garantizado por tipo: `BackupTrigger.runIfDue()` no es `throws`, así que no puede propagar un error a la captura.
+- `BackupState` en un `UserDefaults` de prueba: un fallo no mueve `lastExportAt`; un éxito limpia el error.
+- Nombre de archivo de C5 en hora de Panamá.
 
 **Gate de salida.**
 - [ ] Tests verdes.
