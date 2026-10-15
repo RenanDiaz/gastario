@@ -25,19 +25,6 @@ targets:
     sources: [Gastario]
     dependencies:
       - package: GastarioCore
-    # XcodeGen genera el archivo; la fuente de verdad son estas propiedades (no se versiona).
-    # iCloud Documents (ubiquity container, no CloudKit) para el auto-export (SPEC Fase 5).
-    entitlements:
-      path: Gastario/Gastario.entitlements
-      properties:
-        com.apple.security.application-groups:
-          - group.com.renandiaz.Gastario
-        com.apple.developer.icloud-container-identifiers:
-          - iCloud.com.renandiaz.Gastario
-        com.apple.developer.icloud-services:
-          - CloudDocuments
-        com.apple.developer.ubiquity-container-identifiers:
-          - iCloud.com.renandiaz.Gastario
     # NSUbiquitousContainers es un diccionario y no tiene clave INFOPLIST_KEY_: XcodeGen genera el
     # Info.plist (no se versiona) y Xcode le suma las claves INFOPLIST_KEY_* de abajo.
     info:
@@ -55,6 +42,9 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.renandiaz.Gastario
+        # Capabilities (App Groups, iCloud) en Configs/*.entitlements. El archivo lo elige
+        # Configs/Base.xcconfig; un equipo personal sin iCloud lo cambia en Local.xcconfig.
+        CODE_SIGN_ENTITLEMENTS: $(GASTARIO_ENTITLEMENTS)
         INFOPLIST_KEY_CFBundleDisplayName: Gastario
         GENERATE_INFOPLIST_FILE: YES
         SWIFT_VERSION: "6.0"
