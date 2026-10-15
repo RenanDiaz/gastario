@@ -3,6 +3,9 @@ import SwiftData
 import Testing
 @testable import GastarioCore
 
+/// Swift Testing también exporta `Attachment`; la declaración local gana sobre los imports.
+fileprivate typealias Attachment = GastarioCore.Attachment
+
 struct StoreTests {
     private let occurredAt = ISO8601DateFormatter().date(from: "2026-10-07T11:53:00-05:00")!
 
