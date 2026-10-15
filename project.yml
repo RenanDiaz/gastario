@@ -53,6 +53,9 @@ targets:
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        # Adjuntos (SPEC Fase 6): foto con la cámara y escaneo del QR de la factura.
+        INFOPLIST_KEY_NSCameraUsageDescription: Gastario usa la cámara para fotografiar comprobantes y escanear el QR de la factura electrónica.
+        INFOPLIST_KEY_NSPhotoLibraryUsageDescription: Gastario adjunta fotos de comprobantes a tus movimientos.
 
 schemes:
   Gastario:

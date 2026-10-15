@@ -59,6 +59,8 @@ struct MovementDetailView: View {
                 }
             }
 
+            AttachmentsSection(movement: movement)
+
             Section("Captura") {
                 LabeledContent("Fuente", value: sourceText)
                 LabeledContent("Estado", value: movement.parseStatus.rawValue)

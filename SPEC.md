@@ -309,6 +309,11 @@ Los cuerpos deben ser **reales**, copiados desde Mail (seleccionar todo el cuerp
 
 **Pruebas automáticas.** Validación de links (acepta `https://dgi-fep.mef.gob.pa/...`, rechaza `javascript:`, texto plano, `ftp://`). Redimensionado de imagen respeta el máximo. El resto es UI y se verifica en dispositivo.
 
+**Notas de implementación.**
+- La lógica probable vive en `GastarioCore/Attachments`: `AttachmentRules` (links; el QR es estricto, un link escrito a mano sin esquema se completa con `https://`) e `ImageCompressor` (ImageIO, aplica la orientación EXIF y nunca agranda una imagen chica).
+- La compresión corre fuera del main actor.
+- La vista previa usa `.quickLookPreview` de SwiftUI sobre un archivo temporal.
+
 **Gate de salida.**
 - [ ] 📱 AC-19: PDF de 5 MB, cerrar y abrir → sigue ahí y abre en Quick Look. Verificar que el store `.sqlite` no creció 5 MB (externalStorage).
 - [ ] 📱 AC-20: QR de una factura electrónica real → `link` que abre en Safari.

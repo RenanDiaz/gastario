@@ -14,8 +14,8 @@ App iOS que registra cada pago con Apple Pay y cada Yappy, y permite anotar en q
 | 3. Notificaciones | Implementada; faltan las verificaciones 📱 del gate |
 | 4. Revisión y edición | Implementada; faltan las verificaciones 📱 y comparar los fixtures de la Fase 1 con el cuerpo crudo real |
 | 5. Exportar y respaldo (iCloud Drive) | Implementada; faltan las verificaciones 📱 del gate |
-| 6. Adjuntos | Sigue |
-| 7. Transición | Pendiente |
+| 6. Adjuntos (foto, PDF, link, QR de factura) | Implementada; faltan las verificaciones 📱 del gate |
+| 7. Transición | Sigue (operativa, sin código) |
 
 Pendiente de decisión: [Q3](SPEC.md#5-preguntas-abiertas-bloquean-la-fase-indicada) (formato del `Amount` de Wallet) y confirmar [C13](SPEC.md#2-cambios-propuestos-a-intentmd) (textos de notificación). Detalle de cada fase en el [mapa de fases](SPEC.md#mapa-de-fases).
 
