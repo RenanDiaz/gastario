@@ -12,7 +12,9 @@ struct MovementListView: View {
                 ForEach(MovementPresentation.groupedByDay(movements, date: \.occurredAt)) { group in
                     Section(MovementPresentation.dayTitle(group.day)) {
                         ForEach(group.items) { movement in
-                            MovementRow(movement: movement)
+                            NavigationLink(value: movement) {
+                                MovementRow(movement: movement)
+                            }
                         }
                     }
                 }
@@ -23,6 +25,9 @@ struct MovementListView: View {
                 }
             }
             .navigationTitle("Gastario")
+            .navigationDestination(for: Movement.self) { movement in
+                MovementDetailView(movement: movement)
+            }
             #if DEBUG
             .toolbar { DebugMenu() }
             #endif

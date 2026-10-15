@@ -43,4 +43,12 @@ public enum MovementPresentation {
         style.timeZone = timeZone
         return day.formatted(style.locale(Locale(identifier: "es_PA")))
     }
+
+    /// Fecha y hora con segundos en Panamá, por ejemplo "15 oct 2026, 12:50:41". Los segundos
+    /// distinguen capturas casi simultáneas del mismo pago.
+    public static func timestampText(_ date: Date) -> String {
+        var style = Date.FormatStyle(date: .abbreviated, time: .standard)
+        style.timeZone = timeZone
+        return date.formatted(style.locale(Locale(identifier: "es_PA")))
+    }
 }

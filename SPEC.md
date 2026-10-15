@@ -230,7 +230,7 @@ Los cuerpos deben ser **reales**, copiados desde Mail (seleccionar todo el cuerp
 - **Filtros** en la lista: "Todos", "Sin nota" (`note == nil`), "Requiere revisión" (`parseStatus != ok`). Cuenta en cada filtro.
 - **Detalle** (`MovementDetailView`):
   - Todos los campos. Link a Maps si hay coordenadas. Aviso si es Yappy sin `confirmation` (C3).
-  - Sección **Cuerpo crudo** para Yappy, con botón "Copiar" (para alimentar fixtures). Para tarjeta, `rawInputs` formateado.
+  - Sección **Cuerpo crudo** para Yappy, con botón "Copiar" (para alimentar fixtures). Para tarjeta, `rawInputs` formateado. **Adelantado:** una versión de solo lectura (campos, hora de captura con segundos y cuerpo crudo) entró después de la Fase 2 para diagnosticar capturas reales; la Fase 4 la vuelve editable.
   - Edición de `amount`, `counterparty`, `occurredAt`. Cada edición agrega el campo a `editedFields` y quita su `ParseIssue`. Si `parseIssues` queda vacío y el estado era `partial` → `ok`. Un `failed` **no** cambia por edición: solo por re-parseo (su crudo no se entendió; editar a mano no lo valida).
   - `note` editable; al guardar asigna `notedAt` si estaba vacío.
   - Botón "Re-parsear" en `card`/`yappy`.
