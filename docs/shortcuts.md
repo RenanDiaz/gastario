@@ -41,7 +41,7 @@ End Repeat
 
 - **El `If` es obligatorio.** El filtro del trigger decide *si* el atajo corre, pero `Email` trae **todos** los correos que llegaron en ese lote. Sin el `If`, un correo de otro remitente que llega junto con el de Yappy (por ejemplo, el recibo del comercio) entra como movimiento `failed`. Si `Sender` incluye el nombre ("Yappy <notificaciones@…>"), usa *contains* con la dirección completa.
 - La salida del trigger es `Email`, **no** `Shortcut Input`.
-- `Content` entrega el **HTML** del correo; Gastario lo guarda tal cual y lo convierte a texto al parsear.
+- `Content` entrega el cuerpo en **HTML o texto plano**, según el correo; Gastario lo guarda tal cual y acepta ambos al parsear.
 - El trigger filtra solo por remitente: también entran los correos de Yappy Comercial de la cuenta del negocio, que se registran como ingresos ([`INTENT.md`, Decisiones](../INTENT.md#decisiones)).
 - Correr el atajo dos veces sobre el mismo correo no duplica: se deduplica por confirmación + dirección.
 

@@ -117,7 +117,7 @@ Parámetros: `merchant: String`, `amount: String`, `cardName: String`, `city: St
 
 Título visible en Shortcuts: "Log Yappy Email".
 
-Parámetro: `content: String` (cuerpo completo del correo). `Content` en Shortcuts entrega el **HTML** del correo: se guarda tal cual en `rawContent` y el parser lo convierte a texto. El parser también acepta texto plano.
+Parámetro: `content: String` (cuerpo completo del correo). `Content` en Shortcuts entrega el cuerpo **en HTML o en texto plano** según el correo (visto en dispositivo: "Enviaste" llegó en HTML y "Pagaste" en texto). Se guarda tal cual en `rawContent`; el parser acepta ambos y convierte el HTML a texto.
 
 **Deduplicación.** Antes de insertar, `FetchDescriptor<Movement>` filtrando por `confirmation` **y** `direction`. Si existe → no crear, no modificar el existente, no notificar, devolver éxito. La dirección entra en la clave porque un pago de la cuenta personal a Yappy Comercial llega dos veces con la misma confirmación: como `outflow` ("Pagaste") y como `inflow` ("Recibiste una compra en línea"). Son dos movimientos.
 
