@@ -6,7 +6,7 @@ App iOS que registra cada pago con Apple Pay y cada Yappy, y permite anotar en q
 
 ## Estado
 
-Fases 0 (fundación) y 1 (parsers) cerradas. Fases 2 (captura con App Intents, [`docs/shortcuts.md`](docs/shortcuts.md)), 3 (notificaciones con respuesta) y 4 (revisión y edición) implementadas; falta verificar sus gates en el iPhone. Después sigue la Fase 5, exportar y respaldo ([`SPEC.md` §3, mapa de fases](SPEC.md#mapa-de-fases)).
+Fases 0 (fundación) y 1 (parsers) cerradas. Fases 2 (captura con App Intents, [`docs/shortcuts.md`](docs/shortcuts.md)), 3 (notificaciones con respuesta), 4 (revisión y edición) y 5 (exportar y respaldo en iCloud Drive) implementadas; falta verificar sus gates en el iPhone. Después sigue la Fase 6, adjuntos ([`SPEC.md` §3, mapa de fases](SPEC.md#mapa-de-fases)).
 
 ## Requisitos
 
@@ -14,6 +14,7 @@ Fases 0 (fundación) y 1 (parsers) cerradas. Fases 2 (captura con App Intents, [
 |---|---|
 | Mac de build | Xcode 26 o posterior (Swift 6) |
 | App | iOS 26+ (iPhone); deployment target en [`SPEC.md` §2, C12](SPEC.md#2-cambios-propuestos-a-intentmd) |
+| Cuenta de Apple | Developer pagada: iCloud Documents no está disponible con una cuenta gratis, y la firma gratis vence a los 7 días |
 | Herramientas | [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`) |
 
 ## Primeros pasos
@@ -29,6 +30,8 @@ open Gastario.xcodeproj
 ```
 
 Con el Team ID puesto y firma automática, Xcode registra el App Group `group.com.renandiaz.Gastario` la primera vez que compilas en el iPhone. En la consola de Xcode, el arranque imprime la ruta del store: debe contener `Shared/AppGroup`.
+
+Lo mismo pasa con el contenedor de iCloud `iCloud.com.renandiaz.Gastario`, que usa el respaldo. Si la carpeta "Gastario" no aparece en Archivos → iCloud Drive después del primer export, sube `CURRENT_PROJECT_VERSION` en `Configs/Base.xcconfig` y reinstala: iOS solo vuelve a leer `NSUbiquitousContainers` cuando cambia el número de build.
 
 Vuelve a correr `xcodegen generate` cada vez que agregues o quites archivos o cambies `project.yml`.
 
