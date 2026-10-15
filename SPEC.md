@@ -162,12 +162,15 @@ Los cuerpos deben ser **reales**, copiados desde Mail (seleccionar todo el cuerp
   - `captureYappy(content: String, capturedAt: Date = .now) async -> CaptureOutcome`
   - `CaptureOutcome` = `.created(Movement.ID)` | `.duplicate(existing: Movement.ID)`.
   - Orden interno: (1) insertar `Movement` con crudo y `parseStatus = failed` provisional, guardar; (2) parsear; (3) actualizar campos, `parseStatus`, `parseIssues`; (4) guardar; (5) `notifier.notify(movementID)`; (6) `backup.runIfDue()`. Los pasos 5 y 6 reciben protocolos; en esta fase son no-op.
-  - Dedup Yappy: si el parser devuelve `confirmation`, `FetchDescriptor` por igualdad **antes** del paso 1. Si existe → `.duplicate`, sin tocar nada, sin notificar. Si `confirmation == nil` → no hay dedup (C3).
+  - Dedup Yappy por `confirmation` + `direction` (C11), **después** de los pasos 1–3: la confirmación sale del parser, y parsear antes de guardar el crudo perdería la captura si el parser falla (principio 2). Si existe otro movimiento con la misma clave → se borra el recién insertado y se devuelve `.duplicate`, sin tocar el existente y sin notificar. Sin `confirmation` o sin `direction` no hay dedup (C3).
+  - El parser se inyecta (`CaptureParser`) para poder probar con uno que lanza.
+  - `@MainActor`: las capturas del proceso se serializan, así dos correos iguales simultáneos no pasan ambos la dedup.
   - `rawInputs` = JSON de `CardRawInputs` (Codable) tal como llegó.
 - `Gastario/Intents/LogCardMovementIntent.swift`, `LogYappyEmailIntent.swift`:
   - Títulos "Log Card Transaction" y "Log Yappy Email".
-  - Modo background con `supportedModes = .background` (iOS 26+; **verificar el nombre exacto contra el SDK de Xcode 26.x antes de escribir código**).
-  - Construyen el container con `GastarioStore` y llaman a `CaptureService`. Devuelven `.result()` siempre que el store responda, también en `.duplicate` y en `failed`.
+  - Modo background con `supportedModes = .background` (iOS 26+; verificado: compila con Xcode 26.6).
+  - Usan un único container por proceso (compartido con la app) y llaman a `CaptureService`. Devuelven `.result()` siempre que el store responda, también en `.duplicate` y en `failed`.
+  - Todos los parámetros son opcionales: uno requerido que llega vacío hace que Atajos pregunte, y en segundo plano eso detiene la captura (principio 1). `nil` se guarda como `""`.
 - Instrucciones para configurar los dos atajos en `docs/shortcuts.md`, copiadas de `INTENT.md`, con el `Append to Text File` **antes** del intent.
 
 **Fuera de alcance.** Notificaciones, export, UI.
@@ -178,6 +181,7 @@ Los cuerpos deben ser **reales**, copiados desde Mail (seleccionar todo el cuerp
 - Tarjeta sin ciudad ni coordenadas → se guarda con nulos. (AC-10)
 - Mismo correo dos veces, el primero con `note` → un `Movement`, `note` intacta, notifier llamado una vez. (AC-6)
 - Dos correos distintos → dos movimientos. (AC-5)
+- Misma `confirmation` con dirección opuesta (pago al propio negocio por Yappy Comercial) → dos movimientos. (C11)
 - Cuerpo inesperado → `failed`, `rawContent` guardado, notifier llamado. (AC-7)
 - El `Movement` existe en el store **antes** de que termine el parseo (inyectar un parser que lance; el movimiento queda `failed` con crudo). Principio 2.
 
