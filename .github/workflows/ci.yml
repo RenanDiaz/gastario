@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "claude/**", "phase-*"]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # GastarioParsing debe compilar y pasar en Linux (SPEC §3 y gate de la Fase 1).
+  linux:
+    runs-on: ubuntu-24.04
+    # Mantener alineada con SWIFT_VERSION en .claude/hooks/session-start.sh.
+    container: swift:6.4.1-noble
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Versión de Swift
+        run: swift --version
+      - name: Verificar (Linux)
+        run: scripts/verify.sh
+
+  macos:
+    # El SDK de iOS 27 requiere el Xcode más reciente del runner.
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Versión de Xcode
+        run: xcodebuild -version && swift --version
+      - name: Instalar XcodeGen
+        run: brew install xcodegen
+      - name: Verificar build y pruebas
+        run: scripts/verify.sh

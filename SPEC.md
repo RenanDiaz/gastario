@@ -5,7 +5,7 @@
 ## 1. Cómo usar este documento
 
 - Cada fase es una unidad de trabajo cerrada para un agente de código: tiene objetivo, alcance, entregables, criterios y un **gate de salida**. No se abre una fase sin cerrar el gate de la anterior.
-- Una fase = una rama (`phase-N-<slug>`) = un PR. El PR enlaza la sección de la fase y marca el checklist del gate.
+- Una fase = una rama = un PR. La rama es `phase-N-<slug>` o, si la crea una sesión de Claude Code en la nube, `claude/<slug>`; CI corre en ambas. El PR enlaza la sección de la fase y marca el checklist del gate.
 - `AC-n` referencia el criterio de aceptación `n` de `INTENT.md`.
 - Las verificaciones marcadas 📱 requieren dispositivo físico y las hace la persona, no el agente. El agente deja listo todo lo que se puede verificar con `swift test` o en simulador.
 - Prioridad de orden: primero lo que **protege la captura** (principio 1), después lo que la hace útil, al final lo que es accesorio (adjuntos).
@@ -31,16 +31,27 @@ Huecos encontrados al convertir el intent en fases. Cada uno tiene una decisión
 ### Estructura del repo
 
 ```
-Gastario.xcodeproj            ← app target, usa "buildable folders" (Xcode 16+) para que
-                                 agregar archivos no requiera editar el pbxproj
+project.yml                   ← XcodeGen: targets, capabilities y entitlements. El
+                                 .xcodeproj se genera y no se versiona
+Configs/                      ← Base.xcconfig; Local.xcconfig (Team ID) fuera de git
 Gastario/                     ← target iOS: UI, App Intents, Notificaciones, Adjuntos, Ajustes
 Packages/
   GastarioParsing/            ← SOLO Foundation. Parsers puros. Testeable en macOS y Linux.
   GastarioCore/               ← Modelos SwiftData, CaptureService, ReparseService, CSVExporter,
                                  BackupPolicy. Depende de GastarioParsing. Testeable en macOS.
+scripts/verify.sh             ← lo mismo que corre CI
 ```
 
+Por qué XcodeGen y no un `.xcodeproj` versionado: un agente en la nube no tiene Xcode. Con `project.yml` puede agregar el App Group (Fase 0), iCloud Documents (Fase 5) o el target de la Share Extension (v1.1) editando YAML legible; con un `pbxproj` versionado tendría que editarlo a mano. El costo es instalar XcodeGen y correr `xcodegen generate` después de agregar archivos.
+
 Por qué dos paquetes y no uno: un agente que corre en la nube (Linux) puede desarrollar y probar `GastarioParsing` completo sin Xcode. `GastarioCore` necesita SwiftData, que solo existe en plataformas Apple; se trabaja con Claude Code local en la Mac. El target de app no tiene lógica probable por unidad: todo lo que se pueda probar vive en los paquetes.
+
+### Entorno y verificación
+
+- `scripts/verify.sh` es la única definición de "verde". En macOS corre ambos paquetes y compila la app en Debug y Release sin firmar; en Linux corre solo `GastarioParsing`.
+- CI tiene dos jobs: `linux` (imagen `swift`) y `macos` (Xcode con el SDK de iOS 27). Un PR no se mergea con ninguno en rojo.
+- `GastarioParsing` solo importa `Foundation`; `verify.sh` falla si importa otra cosa.
+- Las sesiones de Claude Code en la nube instalan Swift para Linux con `.claude/hooks/session-start.sh`. Ahí se desarrolla y prueba `GastarioParsing`; lo que depende de SwiftData o UIKit se escribe en la nube pero lo verifica el job `macos`.
 
 ### Reglas
 
@@ -74,7 +85,7 @@ Las fases 0 y 1 son independientes y pueden correr en paralelo (dos agentes, dos
 **Objetivo.** Proyecto compilable en dispositivo con el store de SwiftData en el App Group desde el primer commit, modelos completos y una lista mínima para ver datos.
 
 **Alcance.**
-- Proyecto Xcode, bundle id, capability **App Groups** (`group.<bundle-id>`). iCloud Documents se habilita en Fase 5 (es solo un toggle, no una migración).
+- `project.yml` (XcodeGen) con bundle id y capability **App Groups** (`group.<bundle-id>`). iCloud Documents se habilita en Fase 5 (es solo un toggle, no una migración).
 - Paquetes `GastarioParsing` (vacío, con un test placeholder) y `GastarioCore`.
 - Modelos `Movement` y `Attachment` según `INTENT.md` + C1 + C2. Relación `attachments` con `deleteRule: .cascade`. **Sin** `@Attribute(.unique)` en `confirmation`.
 - `GastarioStore.makeContainer(inMemory: Bool) -> ModelContainer`. En disco apunta a `FileManager.containerURL(forSecurityApplicationGroupIdentifier:)`. Falla en voz alta (`fatalError` con mensaje) si el App Group no está disponible: es un error de configuración, no de runtime.
@@ -87,7 +98,9 @@ Las fases 0 y 1 son independientes y pueden correr en paralelo (dos agentes, dos
 - `Packages/GastarioCore/Sources/GastarioCore/Models/{Movement,Attachment,Enums}.swift`
 - `Packages/GastarioCore/Sources/GastarioCore/Store/GastarioStore.swift`
 - `Gastario/App/GastarioApp.swift`, `Gastario/Movements/MovementListView.swift`
+- `project.yml` y `Gastario/Gastario.entitlements`.
 - README corto en cada paquete: cómo correr `swift test`.
+- `scripts/verify.sh` sin la tolerancia a partes faltantes: si un paquete o `project.yml` no existe, falla.
 
 **Pruebas automáticas.**
 - Insertar y leer un `Movement` en container en memoria.
@@ -128,7 +141,7 @@ Los cuerpos deben ser **reales**, copiados desde Mail (seleccionar todo el cuerp
 **Pruebas automáticas.** Un test por fixture y por fila de la tabla de montos de `INTENT.md` (`$3.80`, `$1,250.00`, `B/.3.80`, `USD 3.80`, `""`, `"$0.00"`). Cubren AC-2, AC-3, AC-4, AC-16 y la mitad de parseo de AC-7 y AC-12.
 
 **Gate de salida.**
-- [ ] `swift test` verde en `GastarioParsing` en macOS **y** en Linux (CI o contenedor).
+- [ ] `swift test` verde en `GastarioParsing` en macOS **y** en Linux (jobs `macos` y `linux` de CI).
 - [ ] Al menos 3 fixtures de Yappy son reales (enviado con mensaje, sin mensaje, recibido).
 - [ ] Ningún test marcado `SYNTHETIC` para los casos que ya tienen fixture real.
 
