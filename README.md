@@ -16,10 +16,10 @@ App iOS que registra cada pago con Apple Pay y cada Yappy, y permite anotar en q
 | 0. Fundación | Cerrada |
 | 1. Parsers | Cerrada |
 | 2. Captura ([`docs/shortcuts.md`](docs/shortcuts.md)) | Implementada; faltan las verificaciones 📱 del gate |
-| 3. Notificaciones | Implementada; faltan las verificaciones 📱 del gate |
-| 4. Revisión y edición | Implementada; faltan las verificaciones 📱 y comparar los fixtures de la Fase 1 con el cuerpo crudo real |
-| 5. Exportar y respaldo (iCloud Drive) | Implementada; faltan las verificaciones 📱 del gate |
-| 6. Adjuntos (foto, PDF, link, QR de factura) | Implementada; faltan las verificaciones 📱 del gate |
+| 3. Notificaciones | Implementada. 📱 Verificado: responder desde la notificación guarda la nota. Falta: AC-8 con la app cerrada, AC-7/12 y que un duplicado no notifique |
+| 4. Revisión y edición | Implementada. Fixtures comparados con un cuerpo crudo real. 📱 Verificado: borrar. Falta: AC-9, AC-13, AC-14, AC-18 |
+| 5. Exportar y respaldo (iCloud Drive) | Implementada. 📱 Verificado: "Exportar ahora". Falta: AC-21 (auto-export, requiere cuenta pagada) y export fallido |
+| 6. Adjuntos (foto, PDF, link, QR de factura) | Implementada. 📱 Verificado: QR, PDF, foto y borrar un adjunto. Falta: AC-19 (PDF de 5 MB tras reabrir), AC-15 completo y captura durante el flujo de adjuntar |
 | 7. Transición | Sigue (operativa, sin código) |
 
 Pendiente de decisión: [Q3](SPEC.md#5-preguntas-abiertas-bloquean-la-fase-indicada) (formato del `Amount` de Wallet) y confirmar [C13](SPEC.md#2-cambios-propuestos-a-intentmd) (textos de notificación). Detalle de cada fase en el [mapa de fases](SPEC.md#mapa-de-fases).

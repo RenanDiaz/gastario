@@ -137,6 +137,7 @@ Las fases 0 y 1 pueden correr en paralelo (dos agentes, dos ramas). La Fase 1 es
 
 **Fixtures.** `Tests/GastarioParsingTests/Fixtures/Yappy/`:
 - HTML tal como lo entrega `Content`: `sent-with-message.html`, `sent-without-message.html`, `received.html`.
+- `paid-merchant-content.txt`: "Pagaste" real tal como llegó al intent (texto plano), desde la vista de cuerpo crudo. Coincide línea por línea con `paid-merchant-with-message.txt`.
 - Texto plano copiado de Mail (todavía sin HTML de estos tipos): `sent-as-text.txt`, `paid-merchant.txt`, `paid-merchant-with-message.txt`, `commercial-received.txt`, `commercial-online-purchase.txt`.
 - Sintéticos derivados de un real: `amount-with-comma.html`, variantes de fecha `date-narrow-nbsp.html` (U+202F) y `date-plain.html`. La variante U+00A0 es la de los fixtures reales.
 - `unexpected-format.txt` (cuerpo que no es de Yappy).
@@ -259,7 +260,7 @@ Los cuerpos deben ser **reales**, copiados desde Mail (seleccionar todo el cuerp
 - [ ] 📱 AC-9: borrar una notificación sin responder → el movimiento está en "Sin nota".
 - [ ] 📱 AC-13, AC-14, AC-18 en dispositivo.
 - [ ] 📱 AC-15 parcial: borrar un movimiento desaparece de la lista (adjuntos reales se verifican en Fase 6).
-- [ ] Fixtures de Fase 1 comparados con el cuerpo crudo real capturado; reemplazados si difieren.
+- [x] Fixtures de Fase 1 comparados con el cuerpo crudo real capturado; reemplazados si difieren. ("Pagaste" real coincide con el fixture de Mail; agregado como `paid-merchant-content.txt`.)
 
 ---
 

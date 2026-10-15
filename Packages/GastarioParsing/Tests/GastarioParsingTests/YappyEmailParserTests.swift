@@ -78,6 +78,20 @@ struct YappyEmailParserTests {
         #expect(parsed.status == .ok)
     }
 
+    /// Cuerpo real tal como llegó al intent (`Content` en texto plano, copiado de la vista de
+    /// cuerpo crudo). Cierra la comparación de fixtures de la Fase 4.
+    @Test func pagoAComercioContentReal() throws {
+        let parsed = YappyEmailParser.parse(try Fixture.yappy("paid-merchant-content.txt"))
+        #expect(parsed.kind == .paid)
+        #expect(parsed.direction == .outflow)
+        #expect(parsed.amount == decimal("49.06"))
+        #expect(parsed.counterparty == "ASEGURADORA EJEMPLO")
+        #expect(parsed.message == "Por pedido 512340")
+        #expect(parsed.confirmation == "LKJHG-24681357")
+        #expect(parsed.occurredAt == panama("2026-10-15T12:50:00-05:00"))
+        #expect(parsed.status == .ok)
+    }
+
     @Test func comercialRecibido() throws {
         let parsed = YappyEmailParser.parse(try Fixture.yappy("commercial-received.txt"))
         #expect(parsed.kind == .commercialReceived)
