@@ -232,10 +232,11 @@ Los cuerpos deben ser **reales**, copiados desde Mail (seleccionar todo el cuerp
 **Objetivo.** Todo lo que permite confiar en los datos: ver qué falló, corregirlo, re-parsear, agregar lo que la automatización no capturó y borrar lo que sobra.
 
 **Alcance.**
-- **Filtros** en la lista: "Todos", "Sin nota" (`note == nil`), "Requiere revisión" (`parseStatus != ok`). Cuenta en cada filtro.
+- **Filtros** en la lista: "Todos", "Sin nota" (`note == nil`), "Requiere revisión" (`parseStatus != ok`; en el control segmentado dice "Revisar"). Cuenta en cada filtro. Se filtra en memoria sobre el `@Query`: el volumen personal no justifica predicados dinámicos.
 - **Detalle** (`MovementDetailView`):
   - Todos los campos. Link a Maps si hay coordenadas. Aviso si es Yappy sin `confirmation` (C3).
   - Sección **Cuerpo crudo** para Yappy, con botón "Copiar" (para alimentar fixtures). Para tarjeta, `rawInputs` formateado. **Adelantado:** una versión de solo lectura (campos, hora de captura con segundos y cuerpo crudo) entró después de la Fase 2 para diagnosticar capturas reales; la Fase 4 la vuelve editable.
+  - Edición en una hoja ("Editar") que solo aplica los campos que cambiaron, vía `GastarioCore/Editing/MovementEditor`. Montos con el mismo `AmountParser` de la captura.
   - Edición de `amount`, `counterparty`, `occurredAt`. Cada edición agrega el campo a `editedFields` y quita su `ParseIssue`. Si `parseIssues` queda vacío y el estado era `partial` → `ok`. Un `failed` **no** cambia por edición: solo por re-parseo (su crudo no se entendió; editar a mano no lo valida).
   - `note` editable; al guardar asigna `notedAt` si estaba vacío.
   - Botón "Re-parsear" en `card`/`yappy`.
@@ -243,7 +244,7 @@ Los cuerpos deben ser **reales**, copiados desde Mail (seleccionar todo el cuerp
   - `reparse(_ movement:)`: vuelve a correr el parser sobre `rawInputs`/`rawContent`, escribe solo los campos **no** incluidos en `editedFields`, recalcula `parseStatus` y `parseIssues` (un campo editado nunca cuenta como issue). No toca `note`, `notedAt`, `attachments`. Ignora `manual`.
   - `reparseAll()`: solo `parseStatus != ok`. Devuelve conteo de cambiados.
 - **Entrada manual** (`+`): monto, dirección, contraparte, fecha (default ahora), nota opcional. Crea `source = manual`, `parseStatus = ok`, sin pasar por `CaptureService` → sin notificación.
-- **Borrar**: swipe con `confirmationDialog`. Cascade borra adjuntos.
+- **Borrar**: swipe con `confirmationDialog`. Cascade borra adjuntos. También retira la notificación entregada del movimiento, para que no quede una pregunta sobre algo que ya no existe.
 - **Resumen del mes** como cabecera de la lista (C9).
 - **Ajustes** (esqueleto): "Re-parsear todo" con resultado "N movimientos actualizados". Fase 5 agrega las filas de export.
 
