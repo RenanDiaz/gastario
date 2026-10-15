@@ -16,9 +16,9 @@ App iOS que registra cada pago con Apple Pay y cada Yappy, y permite anotar en q
 | 0. Fundación | Cerrada |
 | 1. Parsers | Cerrada |
 | 2. Captura ([`docs/shortcuts.md`](docs/shortcuts.md)) | Implementada; faltan las verificaciones 📱 del gate |
-| 3. Notificaciones | Implementada. 📱 Verificado: responder desde la notificación guarda la nota. Falta: AC-8 con la app cerrada, AC-7/12 y que un duplicado no notifique |
+| 3. Notificaciones | Implementada. 📱 Verificado: AC-8 (responder con la app cerrada guarda la nota). Falta: AC-1 con un pago, AC-7/12 y que un duplicado no notifique |
 | 4. Revisión y edición | Implementada. Fixtures comparados con un cuerpo crudo real. 📱 Verificado: borrar. Falta: AC-9, AC-13, AC-14, AC-18 |
-| 5. Exportar y respaldo (iCloud Drive) | Implementada. 📱 Verificado: "Exportar ahora". Falta: AC-21 (auto-export, requiere cuenta pagada) y export fallido |
+| 5. Exportar y respaldo (iCloud Drive) | Implementada. 📱 Verificado: AC-11 ("Exportar ahora" abre en Numbers). Falta: AC-21 (auto-export, requiere cuenta pagada) y export fallido |
 | 6. Adjuntos (foto, PDF, link, QR de factura) | Implementada. 📱 Verificado: QR, PDF, foto y borrar un adjunto. Falta: AC-19 (PDF de 5 MB tras reabrir), AC-15 completo y captura durante el flujo de adjuntar |
 | 7. Transición | Sigue (operativa, sin código) |
 

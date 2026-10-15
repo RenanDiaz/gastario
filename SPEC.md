@@ -220,7 +220,7 @@ Los cuerpos deben ser **reales**, copiados desde Mail (seleccionar todo el cuerp
 
 **Gate de salida.**
 - [ ] 📱 AC-1 completo: pago → notificación con el texto correcto.
-- [ ] 📱 AC-8: dejar la notificación varias horas, matar la app desde el switcher, responder desde el Centro de Notificaciones → abrir la app → `note` y `notedAt` guardados.
+- [x] 📱 AC-8: dejar la notificación varias horas, matar la app desde el switcher, responder desde el Centro de Notificaciones → abrir la app → `note` y `notedAt` guardados.
 - [ ] 📱 AC-7 y AC-12: llegan las notificaciones de revisión / completar.
 - [ ] 📱 Dedup: un correo repetido no genera segunda notificación (AC-6).
 
@@ -286,7 +286,7 @@ Los cuerpos deben ser **reales**, copiados desde Mail (seleccionar todo el cuerp
 
 **Gate de salida.**
 - [ ] Tests verdes.
-- [ ] 📱 AC-11: "Exportar ahora" → el archivo abre en Numbers, una fila por movimiento, montos con signo, fechas legibles.
+- [x] 📱 AC-11: "Exportar ahora" → el archivo abre en Numbers, una fila por movimiento, montos con signo, fechas legibles.
 - [ ] 📱 AC-21: "Simular 8 días", matar la app, hacer un pago → aparece el CSV nuevo en Files → iCloud Drive → Gastario, sin abrir la app.
 - [ ] 📱 Un export fallido (modo avión + iCloud deshabilitado) no impide la captura ni la notificación.
 
