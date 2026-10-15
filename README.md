@@ -6,7 +6,7 @@ App iOS que registra cada pago con Apple Pay y cada Yappy, y permite anotar en q
 
 ## Estado
 
-Fase 1 (parsers) cerrada. Fase 0 (fundación) implementada: proyecto con XcodeGen, modelos SwiftData en el App Group y lista de solo lectura; falta la verificación en el iPhone de su gate. Después sigue la Fase 2, captura con App Intents ([`SPEC.md` §3, mapa de fases](SPEC.md#mapa-de-fases)).
+Fases 0 (fundación) y 1 (parsers) cerradas. Fase 2 (captura con App Intents) implementada; falta configurar los atajos ([`docs/shortcuts.md`](docs/shortcuts.md)) y verificar su gate en el iPhone. Después sigue la Fase 3, notificaciones ([`SPEC.md` §3, mapa de fases](SPEC.md#mapa-de-fases)).
 
 ## Requisitos
 
@@ -62,6 +62,7 @@ gastario/
 ├── Packages/
 │   ├── GastarioParsing/     # parsers puros, solo Foundation, probados también en Linux
 │   └── GastarioCore/        # SwiftData y servicios, solo plataformas Apple
+├── docs/shortcuts.md        # cómo configurar los atajos de captura
 ├── scripts/verify.sh
 └── .claude/                 # hook de inicio para sesiones en la nube
 ```
