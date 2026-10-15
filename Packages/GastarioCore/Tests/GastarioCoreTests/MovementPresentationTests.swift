@@ -29,6 +29,13 @@ struct MovementPresentationTests {
         #expect(groups[1].day == iso.date(from: "2026-10-07T00:00:00-05:00")!)
     }
 
+    @Test func horaConSegundosEnPanama() {
+        let date = ISO8601DateFormatter().date(from: "2026-10-15T17:50:41Z")!
+        let text = MovementPresentation.timestampText(date)
+        #expect(text.contains("12:50:41"))
+        #expect(text.contains("2026"))
+    }
+
     @Test func tituloDelDiaEnEspanol() {
         let day = ISO8601DateFormatter().date(from: "2026-10-07T00:00:00-05:00")!
         let title = MovementPresentation.dayTitle(day)
