@@ -12,7 +12,7 @@
 
 ## 2. Cambios propuestos a INTENT.md
 
-Huecos encontrados al convertir el intent en fases. Cada uno tiene una decisión por defecto; si no se objeta, se implementa así.
+Huecos encontrados al convertir el intent en fases. Cada uno tiene una decisión por defecto; si no se objeta, se implementa así. **C1–C9 confirmados** (Q4).
 
 | # | Hueco | Decisión por defecto | Fase |
 |---|---|---|---|
@@ -26,6 +26,7 @@ Huecos encontrados al convertir el intent en fases. Cada uno tiene una decisión
 | C8 | Imágenes sin límite inflan el almacenamiento externo. | Fotos se guardan como JPEG calidad 0.8, lado mayor máximo 2048 px. PDFs sin tocar. | 6 |
 | C9 | El resumen mensual no dice qué mes ni qué zona horaria. | Mes calendario actual en `America/Panama`. Neto = entradas − salidas. Incluye todos los `parseStatus`. | 4 |
 | C10 | Los correos reales muestran formatos que el intent no listaba: `Content` llega en HTML, existe "Pagaste por Yappy / Pagado a" y llegan correos de Yappy Comercial. | **Confirmado e incorporado a `INTENT.md`.** El parser convierte HTML a texto sin WebKit; "Pagaste" → `outflow`; Yappy Comercial → `inflow`. | 1 |
+| C12 | **Cambio propuesto.** `INTENT.md` dice iOS 27, pero los runners de GitHub (`macos-26`) solo traen Xcode 26.x con SDK de iOS 26.5; con deployment target 27 el job `macos` no puede compilar la app. Ninguna API que pide el intent es exclusiva de iOS 27. | Deployment target **iOS 26.0**, compilado con Xcode 26.x en CI. La app corre igual en iOS 27 y se puede compilar localmente con Xcode 27. Se sube a 27 cuando GitHub ofrezca Xcode 27. | 0 |
 | C11 | Un pago de la cuenta personal al propio negocio llega dos veces con la misma `confirmation`; deduplicar solo por `confirmation` pierde uno. | **Confirmado e incorporado a `INTENT.md`.** Clave de deduplicación = `confirmation` + `direction`. | 2 |
 
 ## 3. Arquitectura y convenciones (aplican a todas las fases)
@@ -100,7 +101,7 @@ Las fases 0 y 1 pueden correr en paralelo (dos agentes, dos ramas). La Fase 1 es
 - `Packages/GastarioCore/Sources/GastarioCore/Models/{Movement,Attachment,Enums}.swift`
 - `Packages/GastarioCore/Sources/GastarioCore/Store/GastarioStore.swift`
 - `Gastario/App/GastarioApp.swift`, `Gastario/Movements/MovementListView.swift`
-- `project.yml` y `Gastario/Gastario.entitlements`.
+- `project.yml` con la capability App Groups. `Gastario/Gastario.entitlements` lo genera XcodeGen a partir de `project.yml` y no se versiona.
 - README corto en cada paquete: cómo correr `swift test`.
 - `scripts/verify.sh` sin la tolerancia a partes faltantes: si un paquete o `project.yml` no existe, falla.
 
@@ -111,10 +112,10 @@ Las fases 0 y 1 pueden correr en paralelo (dos agentes, dos ramas). La Fase 1 es
 
 **Gate de salida.**
 - [ ] `swift test` verde en ambos paquetes.
-- [ ] 📱 La app abre en el dispositivo. El log de arranque imprime la URL del store y contiene `Group Containers`.
+- [ ] 📱 La app abre en el dispositivo. El log de arranque (categoría `app`) imprime la URL del store y contiene `Shared/AppGroup`, la ruta de los App Groups en iOS. (`Group Containers` es la ruta en macOS.)
 - [ ] 📱 Insertar muestras desde el menú DEBUG, cerrar la app desde el switcher, reabrir → siguen ahí.
 
-**Riesgos.** Verificar contra el SDK de iOS 27 que SwiftData acepte `Set<ParseIssue>` y `Set<EditableField>` como atributos Codable sin transformer; si no, persistir como `[String]`.
+**Riesgos.** ~~Verificar contra el SDK de iOS 27 que SwiftData acepte `Set<ParseIssue>` y `Set<EditableField>` como atributos Codable sin transformer; si no, persistir como `[String]`.~~ **Resuelto:** enums y conjuntos se persisten como `String` / `[String]` con accesores tipados. Evita el riesgo y permite predicados sobre `parseStatusRaw` en la Fase 4.
 
 ---
 
@@ -352,8 +353,8 @@ Los cuerpos deben ser **reales**, copiados desde Mail (seleccionar todo el cuerp
 
 | # | Pregunta | Bloquea |
 |---|---|---|
-| Q1 | Bundle id y Team ID para el App Group y el ubiquity container. | F0 |
+| Q1 | ~~Bundle id y Team ID para el App Group y el ubiquity container.~~ **Resuelta:** `com.renandiaz.Gastario`, App Group `group.com.renandiaz.Gastario`. El Team ID va en `Configs/Local.xcconfig`, fuera de git. | F0 |
 | Q2 | ~~Tres cuerpos reales de correo Yappy (enviado con mensaje, sin mensaje, recibido), copiados desde Mail.~~ **Resuelta:** recibidos en HTML (lo que entrega `Content`), más pago a comercio y Yappy Comercial en texto. Ver C10. | Gate F1 |
 | Q3 | Formato exacto del `Amount` que entrega el trigger de Wallet hoy (revisar el CSV viejo: ¿`3.80`, `$3.80`, `B/.3.80`?). | F1 (fixtures), F2 |
-| Q4 | Confirmar C1–C9 o indicar cuáles cambian. | F0 (C1, C2), F5, F6 |
-| Q5 | ¿La lista muestra montos de `partial` con `amount = 0` como `$0.00` o como "—"? Default: "—" con el badge de revisión. | F0 |
+| Q4 | ~~Confirmar C1–C9 o indicar cuáles cambian.~~ **Resuelta:** confirmados. | F0 (C1, C2), F5, F6 |
+| Q5 | ~~¿La lista muestra montos de `partial` con `amount = 0` como `$0.00` o como "—"?~~ **Resuelta:** "—" con el badge de revisión. | F0 |

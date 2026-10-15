@@ -1,0 +1,50 @@
+name: Gastario
+
+options:
+  bundleIdPrefix: com.renandiaz
+  # iOS 26.0 y no 27: los runners de GitHub solo traen Xcode 26.x (SPEC §2, C12).
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+  developmentLanguage: es
+
+configFiles:
+  Debug: Configs/Base.xcconfig
+  Release: Configs/Base.xcconfig
+
+packages:
+  GastarioParsing:
+    path: Packages/GastarioParsing
+  GastarioCore:
+    path: Packages/GastarioCore
+
+targets:
+  Gastario:
+    type: application
+    platform: iOS
+    sources: [Gastario]
+    dependencies:
+      - package: GastarioCore
+    # XcodeGen genera el archivo; la fuente de verdad son estas propiedades (no se versiona).
+    entitlements:
+      path: Gastario/Gastario.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.renandiaz.Gastario
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.renandiaz.Gastario
+        INFOPLIST_KEY_CFBundleDisplayName: Gastario
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: complete
+        TARGETED_DEVICE_FAMILY: "1"
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+
+schemes:
+  Gastario:
+    build:
+      targets:
+        Gastario: all
