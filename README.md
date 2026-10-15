@@ -6,7 +6,7 @@ App iOS que registra cada pago con Apple Pay y cada Yappy, y permite anotar en q
 
 ## Estado
 
-Infraestructura de repo lista (CI, `verify.sh`, entorno en la nube). Siguen las fases 0 y 1 ([`SPEC.md` §3, mapa de fases](SPEC.md#mapa-de-fases)), que pueden correr en paralelo.
+Fase 1 (parsers) cerrada: `GastarioParsing` con fixtures reales de Yappy. Sigue la Fase 0 ([`SPEC.md` §3, mapa de fases](SPEC.md#mapa-de-fases)), bloqueada por Q1, Q4 y Q5 ([§5](SPEC.md#5-preguntas-abiertas-bloquean-la-fase-indicada)).
 
 ## Requisitos
 

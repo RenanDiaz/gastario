@@ -48,7 +48,7 @@ Hoy esto vive en dos automatizaciones de Shortcuts que escriben CSVs en iCloud D
 |---|---|---|
 | `id` | UUID | También es el identificador de la notificación |
 | `source` | enum `card` \| `yappy` \| `manual` | |
-| `direction` | enum `outflow` \| `inflow` | Tarjeta siempre `outflow`. Yappy: "Enviaste" → `outflow`, "Te enviaron" → `inflow` |
+| `direction` | enum `outflow` \| `inflow` | Tarjeta siempre `outflow`. Yappy: "Enviaste" y "Pagaste" → `outflow`; "Te enviaron" y Yappy Comercial → `inflow` |
 | `amount` | `Decimal` | Siempre positivo; el signo lo da `direction`. Nunca `Double` |
 | `counterparty` | String? | Comercio (tarjeta) o persona (Yappy) |
 | `cardName` | String? | Solo tarjeta |
@@ -117,18 +117,18 @@ Parámetros: `merchant: String`, `amount: String`, `cardName: String`, `city: St
 
 Título visible en Shortcuts: "Log Yappy Email".
 
-Parámetro: `content: String` (cuerpo completo del correo).
+Parámetro: `content: String` (cuerpo completo del correo). `Content` en Shortcuts entrega el **HTML** del correo: se guarda tal cual en `rawContent` y el parser lo convierte a texto. El parser también acepta texto plano.
 
-**Deduplicación.** Antes de insertar, `FetchDescriptor<Movement>` filtrando por `confirmation`. Si existe → no crear, no modificar el existente, no notificar, devolver éxito.
+**Deduplicación.** Antes de insertar, `FetchDescriptor<Movement>` filtrando por `confirmation` **y** `direction`. Si existe → no crear, no modificar el existente, no notificar, devolver éxito. La dirección entra en la clave porque un pago de la cuenta personal a Yappy Comercial llega dos veces con la misma confirmación: como `outflow` ("Pagaste") y como `inflow` ("Recibiste una compra en línea"). Son dos movimientos.
 
 **Todo el parseo vive en Swift.** Antes de cualquier regex, normalizar U+00A0 y U+202F a espacio normal y `\r\n` a `\n`. El cuerpo trae saltos de línea y líneas vacías entre etiqueta y valor.
 
 | Campo | Regla |
 |---|---|
-| Dirección | `Enviaste` / `Te enviaron` |
+| Dirección | `Enviaste` / `Pagaste` → `outflow`; `Te enviaron` / Yappy Comercial (`ha recibido un pago por Yappy`, `Recibiste una compra en línea por Yappy`) → `inflow` |
 | Monto | Número después de `$` |
-| Contraparte | Primera línea no vacía después de `Enviado a` / `Enviado por` |
-| Mensaje | Primera línea no vacía después de `Mensaje`, salvo que sea `Confirmación` (entonces vacío) |
+| Contraparte | Primera línea no vacía después de `Enviado a` / `Enviado por` / `Pagado a`. Yappy Comercial: valor de `Cliente:` |
+| Mensaje | Primera línea no vacía después de `Mensaje`, salvo que sea `Confirmación` (entonces vacío). Yappy Comercial: valor de `Comentario:`; si no hay, `Pedido <Número de pedido>` |
 | Confirmación | `[A-Z]{5}-\d{8}` |
 | Fecha | Ver abajo |
 
@@ -216,7 +216,7 @@ End Repeat
 3. **Yappy enviado.** Dado un correo "Enviaste" con mensaje, se guardan dirección, monto, contraparte **sin** "Enviado a", mensaje **sin** la palabra "Mensaje", confirmación y fecha del Yappy.
 4. **Yappy sin mensaje.** `yappyMessage` queda vacío, nunca "Confirmación".
 5. **Dos correos a la vez.** Llegan dos correos juntos → se crean dos movimientos separados.
-6. **Duplicado.** Mismo `confirmation` procesado dos veces → un solo movimiento, una sola notificación, y si el primero ya tenía `note`, la `note` no se modifica.
+6. **Duplicado.** Mismo `confirmation` y `direction` procesados dos veces → un solo movimiento, una sola notificación, y si el primero ya tenía `note`, la `note` no se modifica.
 7. **Parseo fallido.** Correo con formato inesperado → se guarda con `rawContent` y `parseStatus = failed`, y llega la notificación de revisión.
 8. **Responder después.** Dejo la notificación sin tocar varias horas, respondo desde el Centro de Notificaciones → `note` y `notedAt` quedan guardados sin abrir la app, **incluso si la app fue cerrada desde el app switcher**.
 9. **Respaldo de notas.** Si borro la notificación sin responder, el movimiento aparece en el filtro "Sin nota".
@@ -235,7 +235,7 @@ End Repeat
 
 ## Pruebas
 
-- **Parser de Yappy** con fixtures de **cuerpos reales** (copiados vía la vista de cuerpo crudo): enviado con mensaje, enviado sin mensaje, recibido, monto con coma.
+- **Parser de Yappy** con fixtures de **cuerpos reales**: enviado con mensaje, enviado sin mensaje, recibido, pago a comercio (con y sin mensaje), Yappy Comercial (recibido y compra en línea), monto con coma.
 - **Fixtures de fecha:** con espacio normal, con U+00A0 y con U+202F.
 - **Parser de montos de tarjeta:** `$3.80`, `$1,250.00`, `B/.3.80`, `USD 3.80`, `""`, `"$0.00"`. Agregar los formatos reales que se observen en dispositivo.
 - **Deduplicación:** con un `ModelContainer` en memoria, procesar el mismo correo dos veces → un solo `Movement`, `note` intacta.
@@ -258,3 +258,4 @@ End Repeat
 | ¿Categorías fijas? | No en v1. Derivarlas de ~2 meses de notas reales. En v2, evaluar sugerencia on-device con Foundation Models |
 | ¿Sincronización iCloud en v2? | Solo si el auto-export no basta |
 | Nombre de la app | **Gastario** |
+| ¿Yappy Comercial (cuenta del negocio)? | Se registra como `inflow`. La deduplicación usa `confirmation` + `direction` para no perder el lado personal de un pago al propio negocio |
