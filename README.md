@@ -13,8 +13,9 @@ App iOS que registra cada pago con Apple Pay y cada Yappy, y permite anotar en q
 | 2. Captura ([`docs/shortcuts.md`](docs/shortcuts.md)) | Implementada; faltan las verificaciones 📱 del gate |
 | 3. Notificaciones | Implementada; faltan las verificaciones 📱 del gate |
 | 4. Revisión y edición | Implementada; faltan las verificaciones 📱 y comparar los fixtures de la Fase 1 con el cuerpo crudo real |
-| 5. Exportar y respaldo | En curso (PR #11) |
-| 6. Adjuntos, 7. Transición | Pendientes |
+| 5. Exportar y respaldo (iCloud Drive) | Implementada; faltan las verificaciones 📱 del gate |
+| 6. Adjuntos | Sigue |
+| 7. Transición | Pendiente |
 
 Pendiente de decisión: [Q3](SPEC.md#5-preguntas-abiertas-bloquean-la-fase-indicada) (formato del `Amount` de Wallet) y confirmar [C13](SPEC.md#2-cambios-propuestos-a-intentmd) (textos de notificación). Detalle de cada fase en el [mapa de fases](SPEC.md#mapa-de-fases).
 
@@ -24,6 +25,7 @@ Pendiente de decisión: [Q3](SPEC.md#5-preguntas-abiertas-bloquean-la-fase-indic
 |---|---|
 | Mac de build | Xcode 26 o posterior (Swift 6) |
 | App | iOS 26+ (iPhone); deployment target en [`SPEC.md` §2, C12](SPEC.md#2-cambios-propuestos-a-intentmd) |
+| Cuenta de Apple | Developer pagada: iCloud Documents no está disponible con una cuenta gratis, y la firma gratis vence a los 7 días |
 | Herramientas | [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`) |
 
 ## Primeros pasos
@@ -39,6 +41,8 @@ open Gastario.xcodeproj
 ```
 
 Con el Team ID puesto y firma automática, Xcode registra el App Group `group.com.renandiaz.Gastario` la primera vez que compilas en el iPhone. En la consola de Xcode, el arranque imprime la ruta del store: debe contener `Shared/AppGroup`.
+
+Lo mismo pasa con el contenedor de iCloud `iCloud.com.renandiaz.Gastario`, que usa el respaldo. Si la carpeta "Gastario" no aparece en Archivos → iCloud Drive después del primer export, sube `CURRENT_PROJECT_VERSION` en `Configs/Base.xcconfig` y reinstala: iOS solo vuelve a leer `NSUbiquitousContainers` cuando cambia el número de build.
 
 Vuelve a correr `xcodegen generate` cada vez que agregues o quites archivos o cambies `project.yml`.
 
@@ -73,6 +77,7 @@ gastario/
 │   ├── Intents/             # App Intents de captura (tarjeta y Yappy)
 │   ├── Notifications/       # notificaciones con respuesta
 │   ├── Movements/           # lista, detalle, edición y entrada manual
+│   ├── Export/              # respaldo semanal del CSV en iCloud Drive
 │   ├── Settings/
 │   └── Debug/
 ├── Packages/

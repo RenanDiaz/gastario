@@ -1,3 +1,4 @@
+import Foundation
 import GastarioCore
 import OSLog
 import SwiftData
@@ -13,8 +14,14 @@ enum SharedModelContainer {
         return container
     }()
 
-    /// El pipeline de captura de los intents, con las notificaciones de la Fase 3.
+    /// `UserDefaults` del App Group: estado del respaldo (SPEC §2, C4).
+    static let defaults = UserDefaults(suiteName: GastarioStore.appGroupIdentifier) ?? .standard
+
+    /// Un solo servicio de respaldo por proceso: la app, los intents y Ajustes comparten estado.
+    static let backup = BackupService(container: container, state: BackupState(defaults: defaults))
+
+    /// El pipeline de captura de los intents: notificaciones (Fase 3) y auto-export (Fase 5).
     static func captureService() -> CaptureService {
-        CaptureService(container: container, notifier: NotificationService(container: container))
+        CaptureService(container: container, notifier: NotificationService(container: container), backup: backup)
     }
 }
