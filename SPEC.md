@@ -65,7 +65,7 @@ Por qué dos paquetes y no uno: un agente que corre en la nube (Linux) puede des
 - Toda zona horaria explícita: `TimeZone(identifier: "America/Panama")!`. Nunca `.current` en lógica de parseo o agrupación.
 - Inyección por protocolo para los efectos laterales del pipeline de captura (`MovementNotifier`, `BackupTrigger`). Las fases tempranas usan implementaciones no-op; las fases posteriores las reemplazan sin tocar el pipeline.
 - Ningún intent lanza error a Shortcuts por un fallo de parseo. Solo lanza si el store es inaccesible (el Append del CSV viejo ya habrá corrido).
-- Definition of done por fase: compila sin warnings nuevos, `swift test` verde en ambos paquetes, checklist del gate marcado en el PR.
+- Definition of done por fase: compila sin warnings nuevos, `swift test` verde en ambos paquetes, `README.md` al día (ver `CLAUDE.md`, "Antes de abrir un PR"), checklist del gate marcado en el PR.
 
 ### Mapa de fases
 

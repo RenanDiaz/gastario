@@ -6,7 +6,17 @@ App iOS que registra cada pago con Apple Pay y cada Yappy, y permite anotar en q
 
 ## Estado
 
-Fases 0 (fundación) y 1 (parsers) cerradas. Fases 2 (captura con App Intents, [`docs/shortcuts.md`](docs/shortcuts.md)), 3 (notificaciones con respuesta) y 4 (revisión y edición) implementadas; falta verificar sus gates en el iPhone. Después sigue la Fase 5, exportar y respaldo ([`SPEC.md` §3, mapa de fases](SPEC.md#mapa-de-fases)).
+| Fase | Estado |
+|---|---|
+| 0. Fundación | Cerrada |
+| 1. Parsers | Cerrada |
+| 2. Captura ([`docs/shortcuts.md`](docs/shortcuts.md)) | Implementada; faltan las verificaciones 📱 del gate |
+| 3. Notificaciones | Implementada; faltan las verificaciones 📱 del gate |
+| 4. Revisión y edición | Implementada; faltan las verificaciones 📱 y comparar los fixtures de la Fase 1 con el cuerpo crudo real |
+| 5. Exportar y respaldo | En curso (PR #11) |
+| 6. Adjuntos, 7. Transición | Pendientes |
+
+Pendiente de decisión: [Q3](SPEC.md#5-preguntas-abiertas-bloquean-la-fase-indicada) (formato del `Amount` de Wallet) y confirmar [C13](SPEC.md#2-cambios-propuestos-a-intentmd) (textos de notificación). Detalle de cada fase en el [mapa de fases](SPEC.md#mapa-de-fases).
 
 ## Requisitos
 
@@ -45,7 +55,7 @@ Es lo mismo que corre CI (GitHub Actions, en cada push a `main`, `claude/**` y `
 | `linux` | `swift:6.4.1-noble` | `GastarioParsing` solo importa `Foundation`; `swift test` de `GastarioParsing` |
 | `macos` | `macos-26` | Lo anterior + `swift test` de `GastarioCore` + build de la app en Debug y Release, sin firmar |
 
-Hasta cerrar las fases 0 y 1, `verify.sh` omite con aviso los paquetes y el proyecto que todavía no existen.
+Si falta `project.yml` o alguno de los dos paquetes, `verify.sh` falla: no omite nada.
 
 ### Sesiones de Claude Code en la nube
 
@@ -56,14 +66,21 @@ Hasta cerrar las fases 0 y 1, `verify.sh` omite con aviso los paquetes y el proy
 ```
 gastario/
 ├── INTENT.md, SPEC.md       # qué y por qué / cómo y en qué orden
-├── project.yml              # XcodeGen: fuente de verdad del proyecto (Fase 0)
+├── project.yml              # XcodeGen: fuente de verdad del proyecto
 ├── Configs/                 # xcconfig compartido; Local.xcconfig (Team ID) fuera de git
-├── Gastario/                # target iOS (Fase 0)
+├── Gastario/                # target iOS
+│   ├── App/                 # arranque, AppDelegate, contenedor SwiftData en el App Group
+│   ├── Intents/             # App Intents de captura (tarjeta y Yappy)
+│   ├── Notifications/       # notificaciones con respuesta
+│   ├── Movements/           # lista, detalle, edición y entrada manual
+│   ├── Settings/
+│   └── Debug/
 ├── Packages/
 │   ├── GastarioParsing/     # parsers puros, solo Foundation, probados también en Linux
 │   └── GastarioCore/        # SwiftData y servicios, solo plataformas Apple
 ├── docs/shortcuts.md        # cómo configurar los atajos de captura
 ├── scripts/verify.sh
+├── .github/workflows/ci.yml # jobs linux y macos
 └── .claude/                 # hook de inicio para sesiones en la nube
 ```
 
