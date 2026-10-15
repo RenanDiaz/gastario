@@ -17,18 +17,18 @@ Los identificadores (tipos, funciones, variables) van en inglés, como ya los de
 - `README.md` explica cómo compilar, instalar, usar y verificar. No copia el spec: enlaza a sus secciones.
 - Una fase = un PR. El PR enlaza la sección de la fase y marca el checklist del gate. Las verificaciones 📱 las hace la persona: déjalas sin marcar y lista qué falta probar.
 
-## Al cerrar una fase (o cambiar el spec)
+## Antes de abrir un PR
 
-Revisa `README.md` y actualiza lo que cambió:
+Todo PR (de fase o no) revisa `README.md` y actualiza en el mismo PR lo que su cambio dejó desactualizado:
 
-- **Estado** (fases cerradas y qué sigue);
+- **Estado** (fases cerradas, en curso y qué sigue; preguntas y cambios propuestos pendientes);
 - **Requisitos** (iOS, Xcode, Swift);
-- **Primeros pasos**, si cambió la instalación;
+- **Primeros pasos**, si cambió la instalación o la configuración local;
 - **Verificación**, si `scripts/verify.sh` o CI hacen algo nuevo;
 - **Estructura**, si se agregaron o movieron carpetas o paquetes;
 - los enlaces a secciones del spec (`SPEC.md#…`), si se renumeraron o renombraron.
 
-Si nada cambia, dilo en el PR.
+La descripción del PR dice qué cambió en el README o, si nada, "README: sin cambios".
 
 ## Proyecto y verificación
 
