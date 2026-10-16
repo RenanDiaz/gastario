@@ -35,6 +35,19 @@ struct CardInputParserTests {
         #expect(parsed.issues.isEmpty)
     }
 
+    /// Q3: lo que guardó en `rawInputs` una compra real con Apple Pay (comercio y ubicación cambiados).
+    /// Wallet entrega `Amount` con `$` y punto decimal.
+    @Test func datosRecibidosDeWallet() throws {
+        let json = #"{"amount":"$46.55","cardName":"Debito Platinum","city":"David","latitude":8.43,"longitude":-82.43,"merchant":"TIENDA EJEMPLO"}"#
+        let raw = try JSONDecoder().decode(CardRawInputs.self, from: Data(json.utf8))
+        let parsed = CardInputParser.parse(raw)
+        #expect(parsed.amount == decimal("46.55"))
+        #expect(parsed.counterparty == "TIENDA EJEMPLO")
+        #expect(parsed.cardName == "Debito Platinum")
+        #expect(parsed.city == "David")
+        #expect(parsed.status == .ok)
+    }
+
     /// AC-12: Wallet entrega `Amount = 0` o vacío.
     @Test(arguments: ["0", "$0.00", "", "   "])
     func montoCeroOVacioEsPartial(amount: String) {

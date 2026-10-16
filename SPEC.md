@@ -375,6 +375,6 @@ Los cuerpos deben ser **reales**, copiados desde Mail (seleccionar todo el cuerp
 |---|---|---|
 | Q1 | ~~Bundle id y Team ID para el App Group y el ubiquity container.~~ **Resuelta:** `com.renandiaz.Gastario`, App Group `group.com.renandiaz.Gastario`. El Team ID va en `Configs/Local.xcconfig`, fuera de git. | F0 |
 | Q2 | ~~Tres cuerpos reales de correo Yappy (enviado con mensaje, sin mensaje, recibido), copiados desde Mail.~~ **Resuelta:** recibidos en HTML (lo que entrega `Content`), más pago a comercio y Yappy Comercial en texto. Ver C10. | Gate F1 |
-| Q3 | Formato exacto del `Amount` que entrega el trigger de Wallet hoy (revisar el CSV viejo: ¿`3.80`, `$3.80`, `B/.3.80`?). | F1 (fixtures), F2 |
+| Q3 | ~~Formato exacto del `Amount` que entrega el trigger de Wallet hoy (revisar el CSV viejo: ¿`3.80`, `$3.80`, `B/.3.80`?).~~ **Resuelta:** `$46.55` (con `$` y punto decimal), visto en "Datos recibidos" de una compra real con Apple Pay. `AmountParser` ya lo cubría; queda una prueba con ese formato. | F1 (fixtures), F2 |
 | Q4 | ~~Confirmar C1–C9 o indicar cuáles cambian.~~ **Resuelta:** confirmados. | F0 (C1, C2), F5, F6 |
 | Q5 | ~~¿La lista muestra montos de `partial` con `amount = 0` como `$0.00` o como "—"?~~ **Resuelta:** "—" con el badge de revisión. | F0 |
