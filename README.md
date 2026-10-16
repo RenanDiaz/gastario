@@ -22,7 +22,7 @@ App iOS que registra cada pago con Apple Pay y cada Yappy, y permite anotar en q
 | 6. Adjuntos (foto, PDF, link, QR de factura) | Implementada. 📱 Verificado: QR, PDF, foto y borrar un adjunto. Falta: AC-19 (PDF de 5 MB tras reabrir), AC-15 completo y captura durante el flujo de adjuntar |
 | 7. Transición | Sigue (operativa, sin código) |
 
-Pendiente de decisión: [Q3](SPEC.md#5-preguntas-abiertas-bloquean-la-fase-indicada) (formato del `Amount` de Wallet) y confirmar [C13](SPEC.md#2-cambios-propuestos-a-intentmd) (textos de notificación). Detalle de cada fase en el [mapa de fases](SPEC.md#mapa-de-fases).
+Pendiente de decisión: [Q3](SPEC.md#5-preguntas-abiertas-bloquean-la-fase-indicada) (formato del `Amount` de Wallet). Detalle de cada fase en el [mapa de fases](SPEC.md#mapa-de-fases).
 
 ## Requisitos
 

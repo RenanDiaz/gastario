@@ -170,6 +170,9 @@ End Repeat
   - Entrada: "¿Por qué te enviaron $123.20? (Miguel E.)"
   - Tarjeta `partial`: "Pagaste con {cardName}, pero no pude leer {el monto | el comercio}. Complétalo en la app."
   - Yappy `failed`: "No pude leer un Yappy, revísalo en la app."
+  - Tarjeta `failed`: "No pude leer un pago con tarjeta, revísalo en la app."
+  - Sin contraparte, la pregunta va sin el "en …": "¿En qué gastaste $49.06?"
+  - Títulos: "Gasto", "Ingreso" y, para completar o revisar, "Revisar movimiento".
 - Los movimientos `manual` no generan notificación.
 - Categoría con `UNTextInputNotificationAction` ("Responder"), **sin** la opción `.foreground`. La respuesta se guarda en `note` sin abrir la app.
 - El delegate se registra en un `UIApplicationDelegateAdaptor`, en `application(_:didFinishLaunchingWithOptions:)`. **No** en `.onAppear` ni en el `init` de una vista.
