@@ -9,6 +9,7 @@ struct MovementDetailView: View {
     let movement: Movement
     @State private var editing = false
     @State private var reparseResult: String?
+    @State private var attachmentFlow = AttachmentFlow()
 
     var body: some View {
         List {
@@ -59,7 +60,7 @@ struct MovementDetailView: View {
                 }
             }
 
-            AttachmentsSection(movement: movement)
+            AttachmentsSection(movement: movement, flow: attachmentFlow)
 
             Section("Captura") {
                 LabeledContent("Fuente", value: sourceText)
@@ -101,6 +102,7 @@ struct MovementDetailView: View {
         .sheet(isPresented: $editing) {
             EditMovementView(movement: movement)
         }
+        .attachmentPresenters(attachmentFlow, movement: movement)
     }
 
     private var sourceText: String {

@@ -6,23 +6,33 @@ import SwiftUI
 import UniformTypeIdentifiers
 import VisionKit
 
+/// Estado de los flujos para agregar y ver adjuntos. Lo comparten la sección (que los dispara) y
+/// `attachmentPresenters` (que los presenta).
+@MainActor @Observable
+final class AttachmentFlow {
+    var showingPhotoPicker = false
+    var photoItem: PhotosPickerItem?
+    var showingCamera = false
+    var showingPDFImporter = false
+    var showingLinkPrompt = false
+    var linkText = ""
+    var showingScanner = false
+    var previewURL: URL?
+    var errorMessage: String?
+    var working = false
+}
+
 /// Adjuntos de un movimiento: foto, PDF, link o QR de factura (SPEC Fase 6). Vive solo en el
 /// detalle: el camino de captura no sabe que existen (principio 4).
+///
+/// Solo pone las filas. Las presentaciones van fuera del `List` con `attachmentPresenters`: dentro
+/// de un `List`, un modificador sobre el `Section` se copia a cada fila, y el picker se cerraba
+/// solo al elegir la opción del menú la primera vez.
 struct AttachmentsSection: View {
     @Environment(\.modelContext) private var context
     @Environment(\.openURL) private var openURL
     let movement: Movement
-
-    @State private var showingPhotoPicker = false
-    @State private var photoItem: PhotosPickerItem?
-    @State private var showingCamera = false
-    @State private var showingPDFImporter = false
-    @State private var showingLinkPrompt = false
-    @State private var linkText = ""
-    @State private var showingScanner = false
-    @State private var previewURL: URL?
-    @State private var errorMessage: String?
-    @State private var working = false
+    let flow: AttachmentFlow
 
     var body: some View {
         Section {
@@ -35,132 +45,29 @@ struct AttachmentsSection: View {
                 }
             }
             Menu {
-                Button("Foto de la galería", systemImage: "photo.on.rectangle") { showingPhotoPicker = true }
+                Button("Foto de la galería", systemImage: "photo.on.rectangle") { flow.showingPhotoPicker = true }
                 if UIImagePickerController.isSourceTypeAvailable(.camera) {
-                    Button("Tomar foto", systemImage: "camera") { showingCamera = true }
+                    Button("Tomar foto", systemImage: "camera") { flow.showingCamera = true }
                 }
-                Button("PDF", systemImage: "doc.richtext") { showingPDFImporter = true }
+                Button("PDF", systemImage: "doc.richtext") { flow.showingPDFImporter = true }
                 Button("Link", systemImage: "link") {
-                    linkText = ""
-                    showingLinkPrompt = true
+                    flow.linkText = ""
+                    flow.showingLinkPrompt = true
                 }
                 if DataScannerViewController.isSupported && DataScannerViewController.isAvailable {
-                    Button("Escanear QR de factura", systemImage: "qrcode.viewfinder") { showingScanner = true }
+                    Button("Escanear QR de factura", systemImage: "qrcode.viewfinder") { flow.showingScanner = true }
                 }
             } label: {
-                if working {
+                if flow.working {
                     ProgressView()
                 } else {
                     Label("Agregar adjunto", systemImage: "paperclip")
                 }
             }
-            .disabled(working)
+            .disabled(flow.working)
         } header: {
             Text("Adjuntos")
         }
-        .photosPicker(isPresented: $showingPhotoPicker, selection: $photoItem, matching: .images)
-        .onChange(of: photoItem) { _, item in
-            guard let item else { return }
-            photoItem = nil
-            Task { await addPhoto(item) }
-        }
-        .fullScreenCover(isPresented: $showingCamera) {
-            CameraPicker { image in
-                Task { await addCameraImage(image) }
-            }
-            .ignoresSafeArea()
-        }
-        .fileImporter(isPresented: $showingPDFImporter, allowedContentTypes: [.pdf]) { result in
-            addPDF(result)
-        }
-        .alert("Agregar link", isPresented: $showingLinkPrompt) {
-            TextField("https://…", text: $linkText)
-                .keyboardType(.URL)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-            Button("Cancelar", role: .cancel) {}
-            Button("Agregar") { addLink() }
-        }
-        .sheet(isPresented: $showingScanner) {
-            QRScannerView { payload in
-                showingScanner = false
-                addQR(payload)
-            }
-            .ignoresSafeArea()
-        }
-        .alert(
-            errorMessage ?? "",
-            isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })
-        ) {
-            Button("OK", role: .cancel) {}
-        }
-        .quickLookPreview($previewURL)
-    }
-
-    // MARK: - Agregar
-
-    private func addPhoto(_ item: PhotosPickerItem) async {
-        working = true
-        defer { working = false }
-        guard let data = try? await item.loadTransferable(type: Data.self) else {
-            errorMessage = "No se pudo leer la foto."
-            return
-        }
-        await addImage(data)
-    }
-
-    private func addCameraImage(_ image: UIImage) async {
-        guard let data = image.jpegData(compressionQuality: 1) else {
-            errorMessage = "No se pudo leer la foto."
-            return
-        }
-        working = true
-        defer { working = false }
-        await addImage(data)
-    }
-
-    /// Comprime fuera del main actor: una foto de 48 MP tarda.
-    private func addImage(_ data: Data) async {
-        let jpeg = await Task.detached { ImageCompressor.jpegData(from: data) }.value
-        guard let jpeg else {
-            errorMessage = "El archivo no es una imagen."
-            return
-        }
-        insert(Attachment(kind: .image, data: jpeg, filename: "Foto-\(Self.stamp()).jpg"))
-    }
-
-    /// El PDF se copia tal cual (C8) dentro de la app; el original puede desaparecer.
-    private func addPDF(_ result: Result<URL, Error>) {
-        guard case .success(let url) = result else { return }
-        let accessing = url.startAccessingSecurityScopedResource()
-        defer { if accessing { url.stopAccessingSecurityScopedResource() } }
-        guard let data = try? Data(contentsOf: url) else {
-            errorMessage = "No se pudo leer el PDF."
-            return
-        }
-        insert(Attachment(kind: .pdf, data: data, filename: url.lastPathComponent))
-    }
-
-    private func addLink() {
-        guard let url = AttachmentRules.link(from: linkText, allowMissingScheme: true) else {
-            errorMessage = "Ese link no es válido. Usa una dirección http o https."
-            return
-        }
-        insert(Attachment(kind: .link, url: url))
-    }
-
-    /// C7: un QR sin URL se rechaza.
-    private func addQR(_ payload: String) {
-        guard let url = AttachmentRules.link(from: payload) else {
-            errorMessage = AttachmentRules.qrNotALinkMessage
-            return
-        }
-        insert(Attachment(kind: .link, url: url, filename: "Factura electrónica"))
-    }
-
-    private func insert(_ attachment: Attachment) {
-        movement.attachments.append(attachment)
-        try? context.save()
     }
 
     // MARK: - Ver y borrar
@@ -177,15 +84,135 @@ struct AttachmentsSection: View {
         do {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
             try data.write(to: fileURL, options: .atomic)
-            previewURL = fileURL
+            flow.previewURL = fileURL
         } catch {
-            errorMessage = "No se pudo abrir el adjunto."
+            flow.errorMessage = "No se pudo abrir el adjunto."
         }
     }
 
     /// El archivo externo (`externalStorage`) se borra con el registro.
     private func delete(_ attachment: Attachment) {
         context.delete(attachment)
+        try? context.save()
+    }
+}
+
+extension View {
+    /// Pickers, alertas y vista previa de `AttachmentsSection`. Se aplica al `List`, no a la sección.
+    func attachmentPresenters(_ flow: AttachmentFlow, movement: Movement) -> some View {
+        modifier(AttachmentPresenters(flow: flow, movement: movement))
+    }
+}
+
+private struct AttachmentPresenters: ViewModifier {
+    @Environment(\.modelContext) private var context
+    @Bindable var flow: AttachmentFlow
+    let movement: Movement
+
+    func body(content: Content) -> some View {
+        content
+            .photosPicker(isPresented: $flow.showingPhotoPicker, selection: $flow.photoItem, matching: .images)
+            .onChange(of: flow.photoItem) { _, item in
+                guard let item else { return }
+                flow.photoItem = nil
+                Task { await addPhoto(item) }
+            }
+            .fullScreenCover(isPresented: $flow.showingCamera) {
+                CameraPicker { image in
+                    Task { await addCameraImage(image) }
+                }
+                .ignoresSafeArea()
+            }
+            .fileImporter(isPresented: $flow.showingPDFImporter, allowedContentTypes: [.pdf]) { result in
+                addPDF(result)
+            }
+            .alert("Agregar link", isPresented: $flow.showingLinkPrompt) {
+                TextField("https://…", text: $flow.linkText)
+                    .keyboardType(.URL)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                Button("Cancelar", role: .cancel) {}
+                Button("Agregar") { addLink() }
+            }
+            .sheet(isPresented: $flow.showingScanner) {
+                QRScannerView { payload in
+                    flow.showingScanner = false
+                    addQR(payload)
+                }
+                .ignoresSafeArea()
+            }
+            .alert(
+                flow.errorMessage ?? "",
+                isPresented: Binding(get: { flow.errorMessage != nil }, set: { if !$0 { flow.errorMessage = nil } })
+            ) {
+                Button("OK", role: .cancel) {}
+            }
+            .quickLookPreview($flow.previewURL)
+    }
+
+    // MARK: - Agregar
+
+    private func addPhoto(_ item: PhotosPickerItem) async {
+        flow.working = true
+        defer { flow.working = false }
+        guard let data = try? await item.loadTransferable(type: Data.self) else {
+            flow.errorMessage = "No se pudo leer la foto."
+            return
+        }
+        await addImage(data)
+    }
+
+    private func addCameraImage(_ image: UIImage) async {
+        guard let data = image.jpegData(compressionQuality: 1) else {
+            flow.errorMessage = "No se pudo leer la foto."
+            return
+        }
+        flow.working = true
+        defer { flow.working = false }
+        await addImage(data)
+    }
+
+    /// Comprime fuera del main actor: una foto de 48 MP tarda.
+    private func addImage(_ data: Data) async {
+        let jpeg = await Task.detached { ImageCompressor.jpegData(from: data) }.value
+        guard let jpeg else {
+            flow.errorMessage = "El archivo no es una imagen."
+            return
+        }
+        insert(Attachment(kind: .image, data: jpeg, filename: "Foto-\(Self.stamp()).jpg"))
+    }
+
+    /// El PDF se copia tal cual (C8) dentro de la app; el original puede desaparecer.
+    private func addPDF(_ result: Result<URL, Error>) {
+        guard case .success(let url) = result else { return }
+        let accessing = url.startAccessingSecurityScopedResource()
+        defer { if accessing { url.stopAccessingSecurityScopedResource() } }
+        guard let data = try? Data(contentsOf: url) else {
+            flow.errorMessage = "No se pudo leer el PDF."
+            return
+        }
+        insert(Attachment(kind: .pdf, data: data, filename: url.lastPathComponent))
+    }
+
+    private func addLink() {
+        guard let url = AttachmentRules.link(from: flow.linkText, allowMissingScheme: true) else {
+            flow.errorMessage = "Ese link no es válido. Usa una dirección http o https."
+            return
+        }
+        insert(Attachment(kind: .link, url: url))
+    }
+
+    /// C7: un QR sin URL se rechaza.
+    private func addQR(_ payload: String) {
+        guard let url = AttachmentRules.link(from: payload) else {
+            flow.errorMessage = AttachmentRules.qrNotALinkMessage
+            return
+        }
+        insert(Attachment(kind: .link, url: url, filename: "Factura electrónica"))
+    }
+
+    private func insert(_ attachment: Attachment) {
+        movement.attachments.append(attachment)
         try? context.save()
     }
 
