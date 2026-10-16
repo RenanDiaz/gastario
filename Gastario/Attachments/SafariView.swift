@@ -20,8 +20,9 @@ struct SafariView: UIViewControllerRepresentable {
     }
 
     /// "Listo" se cierra por SwiftUI; si lo cerrara el controlador, el binding quedaría en `true`.
+    /// El protocolo no está aislado al main actor en el SDK: la conformidad se aísla aquí.
     @MainActor
-    final class Coordinator: NSObject, SFSafariViewControllerDelegate {
+    final class Coordinator: NSObject, @MainActor SFSafariViewControllerDelegate {
         private let dismiss: () -> Void
 
         init(dismiss: @escaping () -> Void) {
