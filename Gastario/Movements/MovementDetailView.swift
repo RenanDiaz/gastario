@@ -10,6 +10,7 @@ struct MovementDetailView: View {
     @State private var editing = false
     @State private var reparseResult: String?
     @State private var attachmentFlow = AttachmentFlow()
+    @State private var copiedAt: Date?
 
     var body: some View {
         List {
@@ -81,8 +82,18 @@ struct MovementDetailView: View {
 
             if let raw = movement.rawContent ?? movement.rawInputs {
                 Section {
-                    Button("Copiar", systemImage: "doc.on.doc") {
+                    Button(
+                        copiedAt == nil ? "Copiar" : "Copiado",
+                        systemImage: copiedAt == nil ? "doc.on.doc" : "checkmark"
+                    ) {
                         UIPasteboard.general.string = raw
+                        copiedAt = .now
+                    }
+                    .sensoryFeedback(.success, trigger: copiedAt) { _, new in new != nil }
+                    .task(id: copiedAt) {
+                        // Un toque nuevo cancela la espera y la reinicia.
+                        guard copiedAt != nil, (try? await Task.sleep(for: .seconds(2))) != nil else { return }
+                        copiedAt = nil
                     }
                     Text(raw)
                         .font(.caption.monospaced())

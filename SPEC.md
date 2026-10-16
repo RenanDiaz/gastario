@@ -28,6 +28,7 @@ Huecos encontrados al convertir el intent en fases. Cada uno tiene una decisión
 | C10 | Los correos reales muestran formatos que el intent no listaba: `Content` llega en HTML, existe "Pagaste por Yappy / Pagado a" y llegan correos de Yappy Comercial. | **Confirmado e incorporado a `INTENT.md`.** El parser convierte HTML a texto sin WebKit; "Pagaste" → `outflow`; Yappy Comercial → `inflow`. | 1 |
 | C12 | **Confirmado e incorporado a `INTENT.md`.** `INTENT.md` decía iOS 27, pero los runners de GitHub (`macos-26`) solo traen Xcode 26.x con SDK de iOS 26.5; con deployment target 27 el job `macos` no puede compilar la app. Ninguna API que pide el intent es exclusiva de iOS 27. | Deployment target **iOS 26.0**, compilado con Xcode 26.x en CI. La app corre igual en iOS 27 y se puede compilar localmente con Xcode 27. Se sube a 27 cuando GitHub ofrezca Xcode 27. | 0 |
 | C13 | **Confirmado e incorporado a `INTENT.md`.** `INTENT.md` no definía el texto de la notificación para una tarjeta `failed` (el parser lanzó) ni para un Yappy `partial` sin contraparte, ni los títulos. | Tarjeta `failed`: "No pude leer un pago con tarjeta, revísalo en la app." Sin contraparte: la pregunta sin el "en …" ("¿En qué gastaste $49.06?"). Títulos: "Gasto", "Ingreso", "Revisar movimiento". | 3 |
+| C14 | **Confirmado e incorporado a `INTENT.md`.** Abrir un link adjunto con `Link` lo manda a Safari: cada factura deja una pestaña abierta. | Los links adjuntos abren dentro de la app con `SFSafariViewController`, presentado a pantalla completa. El link a Maps del detalle no cambia. | 6 |
 | C11 | Un pago de la cuenta personal al propio negocio llega dos veces con la misma `confirmation`; deduplicar solo por `confirmation` pierde uno. | **Confirmado e incorporado a `INTENT.md`.** Clave de deduplicación = `confirmation` + `direction`. | 2 |
 
 ## 3. Arquitectura y convenciones (aplican a todas las fases)
@@ -306,7 +307,7 @@ Los cuerpos deben ser **reales**, copiados desde Mail (seleccionar todo el cuerp
   - PDF: `.fileImporter(allowedContentTypes: [.pdf])`, leer dentro de `startAccessingSecurityScopedResource`, copiar `Data`.
   - Link: `TextField` validado (`URL` con esquema `http`/`https`).
   - QR: `DataScannerViewController` con `.barcode(symbologies: [.qr])`; si el payload es URL → `kind = link`; si no → error (C7).
-  - Ver: `QLPreviewController` sobre un archivo temporal escrito desde `data`; links con `Link`.
+  - Ver: `QLPreviewController` sobre un archivo temporal escrito desde `data`; links dentro de la app con `SFSafariViewController` (C14).
 - Sección de adjuntos en el detalle: lista, agregar, borrar individual.
 - `NSCameraUsageDescription`, `NSPhotoLibraryUsageDescription` en Info.plist.
 
@@ -319,7 +320,7 @@ Los cuerpos deben ser **reales**, copiados desde Mail (seleccionar todo el cuerp
 
 **Gate de salida.**
 - [ ] 📱 AC-19: PDF de 5 MB, cerrar y abrir → sigue ahí y abre en Quick Look. Verificar que el store `.sqlite` no creció 5 MB (externalStorage).
-- [ ] 📱 AC-20: QR de una factura electrónica real → `link` que abre en Safari.
+- [ ] 📱 AC-20: QR de una factura electrónica real → `link` que abre dentro de la app, sin pestaña nueva en Safari (C14).
 - [ ] 📱 AC-15 completo: borrar un movimiento con 3 adjuntos → desaparecen los archivos externos.
 - [ ] 📱 Una captura durante el flujo de adjuntar no se pierde ni se afecta.
 

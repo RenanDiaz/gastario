@@ -194,7 +194,7 @@ End Repeat
     - PDF con `.fileImporter` (`UTType.pdf`).
     - Link con campo de texto validado.
     - Escanear QR con `DataScannerViewController` → se guarda como `link`.
-    - Ver con `QuickLookPreview`, abrir links con `Link`.
+    - Ver con `QuickLookPreview`; los links abren dentro de la app con `SFSafariViewController`, sin dejar pestañas en Safari.
 - **Resumen** del mes: total salidas, total entradas, neto.
 - **Ajustes:** "Re-parsear todo", fecha del último auto-export, "Exportar ahora".
 
@@ -235,7 +235,7 @@ End Repeat
 17. **Re-parsear.** Corrijo el parser, ejecuto "Re-parsear todo" → los movimientos `partial`/`failed` que ahora parsean bien pasan a `ok`, sin perder la `note` ni los adjuntos.
 18. **Edición protegida.** Corrijo a mano el monto de un movimiento y luego lo re-parseo → el monto editado se conserva.
 19. **Adjunto persistente.** Adjunto un PDF de 5 MB, cierro y abro la app → el PDF sigue ahí y abre en Quick Look.
-20. **QR de factura.** Escaneo el QR de una factura electrónica → se guarda como adjunto `link` y abre en Safari.
+20. **QR de factura.** Escaneo el QR de una factura electrónica → se guarda como adjunto `link` y abre dentro de la app (`SFSafariViewController`).
 21. **Auto-export sin abrir la app.** Pasan 7+ días sin abrir la app y llega una captura → aparece un CSV nuevo en iCloud Drive.
 
 ## Pruebas
