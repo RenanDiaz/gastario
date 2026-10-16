@@ -325,19 +325,22 @@ Los cuerpos deben ser **reales**, copiados desde Mail (seleccionar todo el cuerp
 
 ---
 
-## Fase 7 — Transición (operativa, sin código)
+## Fase 7 — Transición (operativa)
 
 **Objetivo.** Retirar los Shortcuts viejos con evidencia de que Gastario no pierde capturas.
 
 **Procedimiento.**
 1. Empieza al cerrar la Fase 3 (desde ahí Gastario es funcional). Duración: 2–3 semanas de uso normal.
-2. Al final: "Exportar ahora" en Gastario; abrir los dos CSVs viejos; comparar **conteos por día** y **sumas por día** en Numbers.
-3. Cada discrepancia se clasifica: (a) duplicado en Gastario sin `confirmation` (C3), (b) pago rechazado capturado por el tap, (c) captura perdida en Gastario, (d) captura perdida en el CSV viejo.
+2. Al final: "Exportar ahora" en Gastario y comparar contra los dos CSVs viejos con `Tools/TransitionReport` ([README](README.md#transición-fase-7)). Da **conteos y sumas por día** y empareja fila por fila: Yappy por confirmación, tarjeta por monto y hora del atajo (±5 min). La app no cambia: es una herramienta de línea de comandos que reutiliza `GastarioParsing`.
+3. Cada discrepancia se clasifica: (a) duplicado en Gastario sin `confirmation` (C3), (b) pago rechazado capturado por el tap, (c) captura perdida en Gastario, (d) captura perdida en el CSV viejo. La herramienta sugiere una clase; la decide la persona.
+   - Un pago rechazado (b) aparece en los dos lados, porque el CSV viejo y Gastario corren en el mismo atajo: no sale como discrepancia. Se busca a mano contra el estado de cuenta.
+   - Un Yappy que el atajo nunca vio (como el que se perdió por el filtro del trigger, ver [`docs/shortcuts.md`](docs/shortcuts.md#yappy-correo)) falta **en los dos lados** y la comparación no lo detecta. Por eso, además: buscar en Mail los correos de `notificaciones@yappy.com.pa` del período y comparar su cantidad con las filas de Yappy en Gastario. Si falta en los dos, cuenta como (c).
 4. Cualquier (c) bloquea el retiro: se investiga, se corrige, y se extiende el período una semana.
 5. Con cero (c): quitar el `Append to Text File` de ambos atajos. Archivar los CSVs viejos como insumo para la importación de v1.1.
 
 **Gate de salida.**
-- [ ] Tabla de comparación en `docs/transition-report.md` con los conteos y la clasificación de cada discrepancia.
+- [ ] Tabla de comparación en `docs/transition-report.md` (salida de `Tools/TransitionReport`) con los conteos y la clasificación de cada discrepancia.
+- [ ] Conteo de correos de Yappy en Mail del período igual al de Gastario.
 - [ ] Appends retirados.
 - [ ] Decisión registrada sobre v1.1: importar CSVs, Share Extension, y qué formatos reales de `Amount` aparecieron.
 

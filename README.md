@@ -20,7 +20,7 @@ App iOS que registra cada pago con Apple Pay y cada Yappy, y permite anotar en q
 | 4. Revisión y edición | Implementada. Fixtures comparados con un cuerpo crudo real. 📱 Verificado: borrar. Falta: AC-9, AC-13, AC-14, AC-18 |
 | 5. Exportar y respaldo (iCloud Drive) | Implementada. 📱 Verificado: AC-11 ("Exportar ahora" abre en Numbers). Falta: AC-21 (auto-export, requiere cuenta pagada) y export fallido |
 | 6. Adjuntos (foto, PDF, link, QR de factura) | Implementada. 📱 Verificado: QR, PDF, foto y borrar un adjunto. Falta: AC-19 (PDF de 5 MB tras reabrir), AC-15 completo y captura durante el flujo de adjuntar |
-| 7. Transición | Sigue (operativa, sin código) |
+| 7. Transición | En curso: período en paralelo. Herramienta de comparación lista ([cómo usarla](#transición-fase-7)) |
 
 Sin preguntas abiertas. Detalle de cada fase en el [mapa de fases](SPEC.md#mapa-de-fases).
 
@@ -51,6 +51,22 @@ Lo mismo pasa con el contenedor de iCloud `iCloud.com.renandiaz.Gastario`, que u
 
 Vuelve a correr `xcodegen generate` cada vez que agregues o quites archivos o cambies `project.yml`.
 
+## Transición (Fase 7)
+
+Al final del período en paralelo, compara el export de Gastario con los dos CSVs viejos ([`SPEC.md`, Fase 7](SPEC.md#fase-7--transición-operativa)). En la Mac:
+
+```bash
+swift run --package-path Tools/TransitionReport transition-report \
+  --gastario Gastario.csv --tarjeta pagos_con_tarjeta.csv --yappy yappy_each.csv \
+  --desde 2026-10-16 > /tmp/comparacion.md
+```
+
+- `Gastario.csv` sale de "Exportar ahora" en Ajustes. Los otros dos son los CSVs que escriben los atajos viejos.
+- `--desde` es el **primer día completo** en paralelo. Sin `--desde`, empieza el primer día con capturas en Gastario, y lo que el CSV viejo tenga ese día antes de instalar sale como perdido. `--hasta` es opcional.
+- Exporta al final del día: lo que entre en los CSVs viejos después del export sale como perdido en Gastario.
+- La salida es Markdown: conteos y sumas por día, discrepancias fila por fila con una pista de clase y las filas del CSV viejo de Yappy que no son movimientos. Va a `docs/transition-report.md`, completando la columna *Clase*.
+- Los CSVs tienen datos personales: no los subas al repo.
+
 ## Verificación
 
 ```bash
@@ -61,10 +77,10 @@ Es lo mismo que corre CI (GitHub Actions, en cada push a `main`, `claude/**` y `
 
 | Job | Runner | Qué verifica |
 |---|---|---|
-| `linux` | `swift:6.4.1-noble` | `GastarioParsing` solo importa `Foundation`; `swift test` de `GastarioParsing` |
+| `linux` | `swift:6.4.1-noble` | `GastarioParsing` solo importa `Foundation`; `swift test` de `GastarioParsing` y de `Tools/TransitionReport` |
 | `macos` | `macos-26` | Lo anterior + `swift test` de `GastarioCore` + build de la app en Debug y Release, sin firmar |
 
-Si falta `project.yml` o alguno de los dos paquetes, `verify.sh` falla: no omite nada.
+Si falta `project.yml` o alguno de los paquetes, `verify.sh` falla: no omite nada.
 
 ### Sesiones de Claude Code en la nube
 
@@ -90,6 +106,8 @@ gastario/
 ├── Packages/
 │   ├── GastarioParsing/     # parsers puros, solo Foundation, probados también en Linux
 │   └── GastarioCore/        # SwiftData y servicios, solo plataformas Apple
+├── Tools/
+│   └── TransitionReport/    # Fase 7: compara el export con los CSVs viejos (Mac y Linux)
 ├── docs/
 │   ├── shortcuts.md         # cómo configurar los atajos de captura
 │   └── marca/               # ícono y lockup en SVG, capas para Icon Composer

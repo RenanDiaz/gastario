@@ -1,16 +1,19 @@
 #!/usr/bin/env bash
 # Verifica pruebas y build. Es lo mismo que corre CI (SPEC §3, "Entorno y verificación").
-#   macOS (Xcode + XcodeGen): ambos paquetes + build de la app en Debug y Release, sin firmar.
-#   Linux (nube, job `linux` de CI): solo GastarioParsing, que no puede depender de Apple.
+#   macOS (Xcode + XcodeGen): paquetes, herramienta de la Fase 7 y build de la app en Debug y
+#   Release, sin firmar.
+#   Linux (nube, job `linux` de CI): GastarioParsing y la herramienta de la Fase 7, que no
+#   dependen de Apple.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 DERIVED_DATA=build/DerivedData
 PARSING=Packages/GastarioParsing
 CORE=Packages/GastarioCore
+TRANSITION=Tools/TransitionReport
 
 # Todo lo que se verifica tiene que existir: si falta, es un error, no algo que se omite.
-for required in "$PARSING/Package.swift" "$CORE/Package.swift" project.yml; do
+for required in "$PARSING/Package.swift" "$CORE/Package.swift" "$TRANSITION/Package.swift" project.yml; do
   if [[ ! -f $required ]]; then
     echo "ERROR: falta $required" >&2
     exit 1
@@ -27,6 +30,9 @@ fi
 
 echo "==> GastarioParsing: swift test"
 swift test --package-path "$PARSING"
+
+echo "==> TransitionReport: swift test"
+swift test --package-path "$TRANSITION"
 
 if [[ $(uname -s) != Darwin ]]; then
   echo "==> Linux: GastarioCore y la app requieren macOS; los verifica el job macos de CI"
