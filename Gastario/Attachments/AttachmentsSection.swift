@@ -18,8 +18,15 @@ final class AttachmentFlow {
     var linkText = ""
     var showingScanner = false
     var previewURL: URL?
+    var linkToOpen: LinkToOpen?
     var errorMessage: String?
     var working = false
+}
+
+/// Link adjunto abierto en `SafariView`.
+struct LinkToOpen: Identifiable {
+    let id = UUID()
+    let url: URL
 }
 
 /// Adjuntos de un movimiento: foto, PDF, link o QR de factura (SPEC Fase 6). Vive solo en el
@@ -30,7 +37,6 @@ final class AttachmentFlow {
 /// solo al elegir la opción del menú la primera vez.
 struct AttachmentsSection: View {
     @Environment(\.modelContext) private var context
-    @Environment(\.openURL) private var openURL
     let movement: Movement
     let flow: AttachmentFlow
 
@@ -74,7 +80,7 @@ struct AttachmentsSection: View {
 
     private func open(_ attachment: Attachment) {
         if let url = attachment.url {
-            openURL(url)
+            flow.linkToOpen = LinkToOpen(url: url)
             return
         }
         guard let data = attachment.data else { return }
@@ -148,6 +154,10 @@ private struct AttachmentPresenters: ViewModifier {
                 Button("OK", role: .cancel) {}
             }
             .quickLookPreview($flow.previewURL)
+            .fullScreenCover(item: $flow.linkToOpen) { link in
+                SafariView(url: link.url)
+                    .ignoresSafeArea()
+            }
     }
 
     // MARK: - Agregar
