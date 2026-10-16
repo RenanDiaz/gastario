@@ -24,7 +24,7 @@ public struct Record: Sendable, Equatable {
     public var day: String { Day.key(occurredAt) }
 }
 
-/// Fila del CSV viejo de Yappy que no es un movimiento: sin tipo ni confirmación.
+/// Fila del CSV viejo de Yappy que no es un movimiento: sin tipo, confirmación ni monto.
 public struct InvalidRow: Sendable, Equatable {
     public var origin: String
     /// Día en que corrió el atajo, `yyyy-MM-dd`.
@@ -109,8 +109,10 @@ public enum Loader {
     ///
     /// - El signo sale de `tipo`: las primeras filas de "Enviaste" se escribieron sin `-`.
     /// - La fecha es `fechaYappy`; si no se pudo leer, la hora en que corrió el atajo.
-    /// - Sin tipo ni confirmación no es un Yappy (un correo de otro remitente o uno que el
-    ///   atajo viejo no pudo leer): va aparte, para revisarlo a mano.
+    /// - Sin tipo ni confirmación, pero con monto, es un Yappy que el atajo viejo leyó a medias
+    ///   (visto en dispositivo: un "Enviaste" en texto plano del que solo sacó monto, mensaje y
+    ///   fecha). Cuenta, con el signo del monto, y se empareja por día y monto.
+    /// - Sin monto tampoco es un movimiento: va aparte, para revisarlo a mano.
     public static func oldYappy(_ text: String, file: String = "yappy") throws -> (records: [Record], invalid: [InvalidRow]) {
         let table = try CSVTable(text, file: file, requiredColumns: ["fecha", "tipo", "monto", "confirmacion"])
         var records: [Record] = []
@@ -121,7 +123,8 @@ public enum Loader {
             }
             let kind = row["tipo"]
             let confirmation = confirmationKey(row["confirmacion"])
-            guard !kind.isEmpty || confirmation != nil else {
+            let hasAmount = (AmountParser.parse(row["monto"]) ?? 0) != 0
+            guard !kind.isEmpty || confirmation != nil || hasAmount else {
                 let fields = [row["fecha"], row["monto"], row["contraparte"], row["mensaje"]].filter { !$0.isEmpty }
                 invalid.append(InvalidRow(
                     origin: "\(file):\(row.line)", day: Day.key(capturedAt), summary: fields.joined(separator: " · ")))

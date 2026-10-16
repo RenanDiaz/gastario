@@ -9,7 +9,7 @@ public enum MarkdownReport {
         lines.append("")
         lines.append("- Días con movimientos: \(comparison.days.count); días que no cuadran: \(mismatchedDays).")
         lines.append("- Discrepancias fila por fila: \(comparison.discrepancies.count).")
-        lines.append("- Filas del CSV viejo de Yappy que no son movimientos: \(comparison.invalidOldRows.count).")
+        lines.append("- Filas del CSV viejo de Yappy sin tipo, confirmación ni monto: \(comparison.invalidOldRows.count).")
         lines.append("")
         lines.append("### Conteos y sumas por día")
         lines.append("")
@@ -52,7 +52,7 @@ public enum MarkdownReport {
 
         if !comparison.invalidOldRows.isEmpty {
             lines.append("")
-            lines.append("### Filas del CSV viejo de Yappy sin tipo ni confirmación")
+            lines.append("### Filas del CSV viejo de Yappy sin tipo, confirmación ni monto")
             lines.append("")
             lines.append("No cuentan en la tabla por día. Si alguna era un Yappy, búscalo en Gastario a mano.")
             lines.append("")

@@ -42,6 +42,7 @@ private let fullGastario = gastario([
     "2026-10-08T21:13:00-05:00,2026-10-08T21:15:30-05:00,yappy,inflow,100.00,Ana Prueba,,,BBBBB-00000002,,,,,ok,0",
     "2026-10-08T23:58:00-05:00,2026-10-09T00:05:10-05:00,yappy,outflow,-49.06,SEGUROS EJEMPLO,,Por pedido 1,CCCCC-00000003,,,,,ok,0",
     "2026-10-09T21:59:00-05:00,2026-10-09T22:00:20-05:00,yappy,outflow,-4.00,Luis Prueba,,,DDDDD-00000004,,,,,ok,0",
+    "2026-10-09T21:29:00-05:00,2026-10-09T21:42:10-05:00,yappy,outflow,-24.21,Ana Prueba,,Pedido,FFFFF-00000006,,,,,ok,0",
     "2026-10-09T12:00:00-05:00,2026-10-09T12:00:00-05:00,manual,outflow,-20.00,Efectivo,,,,,,,,ok,0",
 ])
 
@@ -66,8 +67,17 @@ struct LoaderTests {
         // "Enviaste" sin `-` en el CSV viejo: igual es salida.
         #expect(records[0].amount == Decimal(string: "-0.01"))
         #expect(records[1].amount == 100)
-        #expect(invalid.map(\.origin) == ["yappy:6", "yappy:7"])
-        #expect(invalid[1].summary == "2026-10-09 21:42 · -24.21 · Pedido")
+        #expect(invalid.map(\.origin) == ["yappy:6"])
+        #expect(invalid[0].summary == "2026-10-09 21:41 · -")
+    }
+
+    /// Un Yappy que el atajo viejo leyó a medias: sin tipo ni confirmación, con monto.
+    @Test func yappyLeidoAMediasCuenta() throws {
+        let (records, _) = try Loader.oldYappy(oldYappy)
+        let partial = try #require(records.first { $0.origin == "yappy:7" })
+        #expect(partial.amount == Decimal(string: "-24.21"))
+        #expect(partial.confirmation == nil)
+        #expect(partial.day == "2026-10-09")
     }
 
     @Test func elDiaDeYappyEsElDelCorreo() throws {
@@ -78,7 +88,7 @@ struct LoaderTests {
 
     @Test func gastarioIgnoraManualesYLeeComillas() throws {
         let records = try Loader.gastario(fullGastario)
-        #expect(records.count == 8)
+        #expect(records.count == 9)
         #expect(!records.contains { $0.counterparty == "Efectivo" })
         #expect(records[3].amount == Decimal(string: "-1123.20"))
     }
@@ -104,7 +114,7 @@ struct ComparisonTests {
         #expect(comparison.days.filter { !$0.matches }.isEmpty)
         // La repetida del CSV viejo no cuenta como captura, pero se lista.
         #expect(comparison.discrepancies.map(\.kind) == [.duplicateOld])
-        #expect(comparison.invalidOldRows.count == 2)
+        #expect(comparison.invalidOldRows.count == 1)
     }
 
     @Test func diaConTotales() throws {
@@ -153,7 +163,7 @@ struct ComparisonTests {
     @Test func rangoDeDias() throws {
         let comparison = try compare(fullGastario, from: "2026-10-09", to: "2026-10-09")
         #expect(comparison.days.map(\.day) == ["2026-10-09"])
-        #expect(comparison.invalidOldRows.count == 2)
+        #expect(comparison.invalidOldRows.count == 1)
         #expect(comparison.discrepancies.isEmpty)
     }
 
@@ -174,6 +184,6 @@ struct MarkdownReportTests {
         let text = MarkdownReport.render(try compare(fullGastario))
         #expect(text.contains("| 2026-10-08 | 2 · -18.11 | 2 · -18.11 | 3 · 50.93 | 3 · 50.93 | ✅ |"))
         #expect(text.contains("Repetida en el CSV viejo"))
-        #expect(text.contains("- `yappy:7`: 2026-10-09 21:42 · -24.21 · Pedido"))
+        #expect(text.contains("- `yappy:6`: 2026-10-09 21:41 · -"))
     }
 }
