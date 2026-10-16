@@ -83,11 +83,12 @@ public enum MovementPresentation {
         return summary
     }
 
-    /// "octubre de 2026".
+    /// "Octubre de 2026": solo la primera letra en mayúscula (`capitalized` daría "Octubre De").
     public static func monthTitle(_ date: Date) -> String {
         var style = Date.FormatStyle().month(.wide).year()
         style.timeZone = timeZone
-        return date.formatted(style.locale(Locale(identifier: "es_PA")))
+        let title = date.formatted(style.locale(Locale(identifier: "es_PA")))
+        return title.prefix(1).uppercased(with: Locale(identifier: "es_PA")) + title.dropFirst()
     }
 
     /// Monto con signo: `-$3.80` para salidas, `+$600.00` para entradas. Un monto que no se pudo

@@ -60,6 +60,7 @@ Por qué dos paquetes y no uno: un agente que corre en la nube (Linux) puede des
 ### Reglas
 
 - Swift 6, concurrencia estricta. Swift Testing (`@Test`), no XCTest, salvo en UI tests si llegan a existir.
+- Las suites de prueba que crean containers o modelos de SwiftData son `@MainActor`. Swift Testing corre las suites en paralelo, y SwiftData usado desde varios hilos a la vez tumbó el proceso de pruebas en CI (señal 11, de forma intermitente).
 - Montos siempre `Decimal`. Prohibido `Double` para dinero. `Decimal(string:locale:)` con `en_US_POSIX`.
 - Enums persistidos con `String` raw value.
 - Toda zona horaria explícita: `TimeZone(identifier: "America/Panama")!`. Nunca `.current` en lógica de parseo o agrupación.
@@ -193,6 +194,7 @@ Los cuerpos deben ser **reales**, copiados desde Mail (seleccionar todo el cuerp
 - [ ] 📱 Recibir un Yappy → aparece. Correr el atajo de email dos veces sobre el mismo correo → un solo movimiento.
 - [ ] 📱 El CSV viejo sigue recibiendo filas (el Append va antes del intent).
 - [ ] 📱 Un correo de otro remitente que llega junto con un Yappy no crea movimiento (`If` del remitente dentro del `Repeat`).
+- [ ] 📱 Un Yappy que llega **después** de otro correo en el mismo lote sí entra (el trigger no filtra por remitente).
 
 **Riesgos.** El trigger de Wallet puede entregar `Merchant` vacío o `Amount = 0`; los formatos reales de `Amount` deben agregarse a los fixtures de Fase 1 en cuanto se observen. Verificar que el intent corre con la app terminada desde el switcher.
 

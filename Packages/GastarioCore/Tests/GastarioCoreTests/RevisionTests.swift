@@ -89,6 +89,8 @@ struct ReparseServiceTests {
     }
 }
 
+/// `@MainActor`: crea modelos de SwiftData (ver `StoreTests`).
+@MainActor
 struct MovementEditorTests {
     let date = ISO8601DateFormatter().date(from: "2026-10-15T12:00:00-05:00")!
 

@@ -73,7 +73,7 @@ struct MonthlySummaryTests {
 
     @Test func tituloDelMes() {
         let date = ISO8601DateFormatter().date(from: "2026-10-15T12:00:00-05:00")!
-        #expect(MovementPresentation.monthTitle(date).lowercased().contains("octubre"))
+        #expect(MovementPresentation.monthTitle(date) == "Octubre de 2026")
     }
 
     @Test func filtros() {

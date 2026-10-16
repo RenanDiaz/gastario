@@ -123,7 +123,7 @@ struct MonthlySummaryView: View {
         let summary = MovementPresentation.monthlySummary(
             movements, containing: now, amount: \.amount, direction: \.direction, occurredAt: \.occurredAt)
         VStack(alignment: .leading, spacing: 8) {
-            Text(MovementPresentation.monthTitle(now).capitalized(with: Locale(identifier: "es_PA")))
+            Text(MovementPresentation.monthTitle(now))
                 .font(.headline)
             HStack(alignment: .firstTextBaseline) {
                 total("Salidas", summary.outflow, color: .primary)

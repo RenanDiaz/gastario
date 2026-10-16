@@ -6,6 +6,9 @@ import Testing
 /// Swift Testing también exporta `Attachment`; la declaración local gana sobre los imports.
 fileprivate typealias Attachment = GastarioCore.Attachment
 
+/// `@MainActor`: SwiftData no admite crear containers y modelos en paralelo desde varios hilos;
+/// las suites que lo usan corren todas en el hilo principal (SPEC §3).
+@MainActor
 struct StoreTests {
     private let occurredAt = ISO8601DateFormatter().date(from: "2026-10-07T11:53:00-05:00")!
 
