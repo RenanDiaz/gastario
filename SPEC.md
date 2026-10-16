@@ -60,6 +60,7 @@ Por qué dos paquetes y no uno: un agente que corre en la nube (Linux) puede des
 ### Reglas
 
 - Swift 6, concurrencia estricta. Swift Testing (`@Test`), no XCTest, salvo en UI tests si llegan a existir.
+- Las suites de prueba que crean containers o modelos de SwiftData son `@MainActor`. Swift Testing corre las suites en paralelo, y SwiftData usado desde varios hilos a la vez tumbó el proceso de pruebas en CI (señal 11, de forma intermitente).
 - Montos siempre `Decimal`. Prohibido `Double` para dinero. `Decimal(string:locale:)` con `en_US_POSIX`.
 - Enums persistidos con `String` raw value.
 - Toda zona horaria explícita: `TimeZone(identifier: "America/Panama")!`. Nunca `.current` en lógica de parseo o agrupación.
