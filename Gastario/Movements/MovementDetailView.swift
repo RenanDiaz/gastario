@@ -11,6 +11,8 @@ struct MovementDetailView: View {
     @State private var reparseResult: String?
     @State private var attachmentFlow = AttachmentFlow()
     @State private var copiedAt: Date?
+    @State private var focusNote = false
+    private let router = NotificationRouter.shared
 
     var body: some View {
         List {
@@ -110,8 +112,16 @@ struct MovementDetailView: View {
         .toolbar {
             Button("Editar") { editing = true }
         }
-        .sheet(isPresented: $editing) {
-            EditMovementView(movement: movement)
+        .sheet(isPresented: $editing, onDismiss: { focusNote = false }) {
+            EditMovementView(movement: movement, focusNote: focusNote)
+        }
+        .task(id: router.noteToEdit) {
+            guard router.noteToEdit == movement.id else { return }
+            router.noteToEdit = nil
+            // Presentar la hoja a mitad del push puede fallar en silencio: se espera a que termine.
+            guard (try? await Task.sleep(for: .milliseconds(500))) != nil else { return }
+            focusNote = true
+            editing = true
         }
         .attachmentPresenters(attachmentFlow, movement: movement)
     }

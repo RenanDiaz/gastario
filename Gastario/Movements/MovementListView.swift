@@ -12,9 +12,11 @@ struct MovementListView: View {
     @State private var showingManualEntry = false
     @State private var showingSettings = false
     @State private var pendingDeletion: Movement?
+    @State private var path: [Movement] = []
+    private let router = NotificationRouter.shared
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             List {
                 Section {
                     MonthlySummaryView(movements: movements)
@@ -86,6 +88,22 @@ struct MovementListView: View {
                 Text("También se borran sus adjuntos. No se puede deshacer.")
             }
         }
+        .task(id: router.movementToOpen) { openFromNotification() }
+    }
+
+    /// C15: reemplaza la navegación por el detalle del movimiento tocado y cierra lo que esté
+    /// abierto encima de la lista.
+    private func openFromNotification() {
+        guard let id = router.movementToOpen else { return }
+        router.movementToOpen = nil
+        var descriptor = FetchDescriptor<Movement>(predicate: #Predicate { $0.id == id })
+        descriptor.fetchLimit = 1
+        guard let movement = try? context.fetch(descriptor).first else { return }
+        showingManualEntry = false
+        showingSettings = false
+        pendingDeletion = nil
+        router.noteToEdit = movement.id
+        path = [movement]
     }
 
     private func matchesFilter(_ movement: Movement) -> Bool {

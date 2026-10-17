@@ -8,14 +8,18 @@ struct EditMovementView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
     let movement: Movement
+    /// Al llegar desde una notificación (C15) el teclado abre en la nota.
+    let focusNote: Bool
 
     @State private var amountText: String
     @State private var counterparty: String
     @State private var occurredAt: Date
     @State private var note: String
+    @FocusState private var noteFocused: Bool
 
-    init(movement: Movement) {
+    init(movement: Movement, focusNote: Bool = false) {
         self.movement = movement
+        self.focusNote = focusNote
         _amountText = State(initialValue: movement.amount == 0 ? "" : AmountInput.text(movement.amount))
         _counterparty = State(initialValue: movement.counterparty ?? "")
         _occurredAt = State(initialValue: movement.occurredAt)
@@ -44,8 +48,10 @@ struct EditMovementView: View {
                 }
                 Section("Nota") {
                     TextField("¿En qué fue?", text: $note, axis: .vertical)
+                        .focused($noteFocused)
                 }
             }
+            .onAppear { noteFocused = focusNote }
             .navigationTitle("Editar")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
