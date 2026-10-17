@@ -24,17 +24,22 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     // `nonisolated`: compila igual si el SDK marca el protocolo como `@MainActor` o no. Solo
     // valores `Sendable` cruzan al `MainActor`.
 
-    /// El sistema da por terminada la respuesta cuando este método retorna: la nota ya está
-    /// guardada (`INTENT.md`, el completion va después del save).
+    /// "Responder" guarda la nota sin abrir la app; el sistema da por terminada la respuesta
+    /// cuando este método retorna, con la nota ya guardada (`INTENT.md`, el completion va después
+    /// del save). Tocar la notificación abre el detalle del movimiento (C15).
     nonisolated func userNotificationCenter(
         _ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse
     ) async {
-        guard
-            response.actionIdentifier == NotificationIDs.replyAction,
-            let text = (response as? UNTextInputNotificationResponse)?.userText,
-            let movementID = UUID(uuidString: response.notification.request.identifier)
-        else { return }
-        await saveReply(movementID: movementID, text: text)
+        guard let movementID = UUID(uuidString: response.notification.request.identifier) else { return }
+        switch response.actionIdentifier {
+        case NotificationIDs.replyAction:
+            guard let text = (response as? UNTextInputNotificationResponse)?.userText else { return }
+            await saveReply(movementID: movementID, text: text)
+        case UNNotificationDefaultActionIdentifier:
+            await openMovement(movementID)
+        default:
+            return
+        }
     }
 
     /// Con la app abierta, la notificación se muestra igual.
@@ -42,6 +47,12 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         _ center: UNUserNotificationCenter, willPresent notification: UNNotification
     ) async -> UNNotificationPresentationOptions {
         [.banner, .list, .sound]
+    }
+
+    @MainActor
+    private func openMovement(_ movementID: UUID) {
+        Logger.app.info("Notificación tocada: \(movementID, privacy: .public)")
+        NotificationRouter.shared.movementToOpen = movementID
     }
 
     @MainActor

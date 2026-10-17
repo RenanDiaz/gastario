@@ -175,6 +175,7 @@ End Repeat
   - Títulos: "Gasto", "Ingreso" y, para completar o revisar, "Revisar movimiento".
 - Los movimientos `manual` no generan notificación.
 - Categoría con `UNTextInputNotificationAction` ("Responder"), **sin** la opción `.foreground`. La respuesta se guarda en `note` sin abrir la app.
+- Tocar la notificación abre la app en el detalle del movimiento, con el editor abierto y el cursor en la nota.
 - El delegate se registra en un `UIApplicationDelegateAdaptor`, en `application(_:didFinishLaunchingWithOptions:)`. **No** en `.onAppear` ni en el `init` de una vista.
 - El `completionHandler` se llama **después** de que el save de `note` termine.
 
