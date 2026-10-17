@@ -35,7 +35,7 @@ Hoy esto vive en dos automatizaciones de Shortcuts que escriben CSVs en iCloud D
 - **Share Extension** para adjuntar desde Mail/Files → v1.1. El App Group de v1 la deja preparada.
 - Parsear XML de factura electrónica o conciliarla automáticamente con un movimiento.
 - Importar CSVs viejos → v1.1, después de validar que la captura nueva no pierde nada.
-- Categorías fijas → v2, derivadas de ~2 meses de notas libres reales.
+- Categorías fijas → v2, ver [v2 — Clasificación](#v2--clasificación).
 - Sincronización iCloud/CloudKit, widgets, presupuestos, multi-moneda (todo es USD).
 
 ## Modelo de datos
@@ -215,6 +215,74 @@ End Repeat
 - Columnas: `occurredAt`, `capturedAt`, `source`, `direction`, `amount`, `counterparty`, `cardName`, `yappyMessage`, `confirmation`, `city`, `latitude`, `longitude`, `note`, `parseStatus`, `attachmentCount`.
 - Los archivos adjuntos **no** se exportan.
 
+## v2 — Clasificación
+
+Saber de qué tipo es cada movimiento y en qué categoría cae, para cruzarlo con los topes del presupuesto. La captura no cambia: clasificar nunca bloquea ni retrasa guardar un movimiento (principio 1).
+
+### Tipo (`kind`)
+
+| `kind` | Qué es | `direction` permitida | ¿Suma en el resumen? |
+|---|---|---|---|
+| `expense` | Gasto variable propio | `outflow` | Sí, como salida |
+| `fixed_expense` | Gasto fijo | `outflow` | Sí, como salida |
+| `debt_payment` | Cuota de un préstamo o de una tarjeta | `outflow` | Sí, como salida |
+| `reimbursable` | Pagué algo por otro y me lo devuelven; la devolución lleva el mismo `kind` | ambas | No |
+| `loan` | Presté o me prestaron | ambas | No |
+| `passthrough` | Pasamanos: me llega y lo paso tal cual | ambas | No |
+| `transfer` | Entre mis propias cuentas | ambas | No |
+| `income` | Ingreso real | `inflow` | Sí, como entrada |
+
+- `kind` es opcional en el modelo. Sin `kind`, el movimiento está **por clasificar** y suma en el resumen según su `direction`, como en v1.
+- Quién reembolsa, a quién se prestó, etc. va en la contraparte o en la nota, no en el `kind`.
+
+### Categoría
+
+Solo para `expense` y `fixed_expense`; en esos dos es obligatoria al clasificar. La subcategoría es opcional y solo existe en Transporte.
+
+- **`expense`:** Supermercado, Comida fuera, Ocio, Salud, Ropa/compras, Mascotas, Transporte {Gasolina, Parking, Placa y trámites, Mantenimiento}, Aporte al hogar, Otros.
+  - **Fuera del presupuesto:** Proyectos, Música. Suman en el resumen como cualquier gasto, pero no se cruzan con los topes.
+- **`fixed_expense`:** Servicios, Suscripciones, Seguros, Cargos bancarios.
+
+La lista es fija en el código (enums con `String` raw value). Cambiarla es un cambio de spec.
+
+### Modelo
+
+- `Movement` agrega `kind`, `category` y `subcategory`, opcionales.
+- `Allocation` (nuevo): parte de un movimiento dividido. `id`, `amount: Decimal`, `kind`, `category`, `subcategory`, `movement` (inversa, `deleteRule: .cascade` desde `Movement`).
+- `ClassificationRule` (nuevo): `counterpartyKey` (normalizado, único por fetch explícito), `kind`, `category`, `subcategory`, `updatedAt`.
+- El re-parseo nunca toca `kind`, `category`, `subcategory` ni las partes (principio 3 extendido).
+
+### Dividir un movimiento
+
+- El movimiento sigue siendo uno: un monto, un crudo, una nota, sus adjuntos. Se divide en N partes, cada una con su `kind` y categoría.
+- No se puede guardar una división cuyas partes no sumen exactamente el monto.
+- Con partes, la clasificación del movimiento son sus partes: `kind`/`category` del movimiento quedan vacíos.
+- Los totales suman por parte.
+- Si un re-parseo cambia el monto y las partes dejan de sumar, no se borra nada: el movimiento pasa a "Requiere revisión" hasta que se corrija la división.
+
+### Reglas y sugerencias
+
+- `counterparty` se normaliza para comparar: mayúsculas, sin prefijos numéricos, sin sufijos de sucursal. Las reglas exactas salen de contrapartes reales.
+- **Tarjeta:** al clasificar un movimiento, se guarda o actualiza la regla `counterpartyKey → (kind, category, subcategory)`. Si se clasifica distinto, gana la última.
+- **Yappy:** no se guardan reglas por persona. Se sugiere solo si las últimas 3 clasificaciones de esa contraparte en Yappy fueron iguales.
+- **Siempre es una sugerencia.** Nunca se aplica sola.
+- **Dónde aparece:**
+  - En el detalle, con un botón "Aplicar".
+  - En la notificación, como botón "✓ <categoría o tipo>" junto a "Responder", **sin** `.foreground`: clasifica sin abrir la app, incluso con la app terminada, igual que la respuesta (AC-8). Como iOS fija los botones por categoría de notificación, se registra una categoría por cada combinación de `kind` y categoría.
+- Buscar la regla al programar la notificación nunca afecta la captura: si falla, la notificación sale sin sugerencia.
+
+### UI
+
+- Filtro **"Por clasificar"**: movimientos sin `kind` y sin partes, o con alguna parte sin `kind`.
+- Editor: `kind` (solo los permitidos para la `direction`), categoría y subcategoría. No guarda un `expense`/`fixed_expense` sin categoría.
+- Detalle: clasificación, sugerencia con "Aplicar" y "Dividir".
+
+### Exportar CSV (v2)
+
+- Columnas nuevas: `id` (primera), `kind`, `category`, `subcategory`, `splitGroupId`.
+- `id` es único por fila y estable entre exports: el del movimiento o, si está dividido, el de cada parte.
+- Un movimiento dividido sale como una fila por parte: `amount` con signo de la parte, su clasificación, y `splitGroupId` = `id` del movimiento. Los demás campos se repiten. Sin división, `splitGroupId` va vacío.
+
 ## Criterios de aceptación
 
 1. **Captura de tarjeta.** Dado que pago con Apple Pay, cuando corre la automatización, entonces se crea un movimiento `card`/`outflow` con monto `Decimal` correcto y llega la notificación de pregunta.
@@ -238,6 +306,19 @@ End Repeat
 19. **Adjunto persistente.** Adjunto un PDF de 5 MB, cierro y abro la app → el PDF sigue ahí y abre en Quick Look.
 20. **QR de factura.** Escaneo el QR de una factura electrónica → se guarda como adjunto `link` y abre dentro de la app (`SFSafariViewController`).
 21. **Auto-export sin abrir la app.** Pasan 7+ días sin abrir la app y llega una captura → aparece un CSV nuevo en iCloud Drive.
+
+### v2
+
+22. **Por clasificar.** Los movimientos existentes y toda captura nueva quedan sin `kind` y aparecen en "Por clasificar". Ninguna captura se bloquea ni se retrasa por no estar clasificada.
+23. **Gasto sin categoría.** En el editor, un `expense` o `fixed_expense` sin categoría no se puede guardar.
+24. **Tipo y dirección.** El editor solo ofrece los `kind` permitidos para la `direction` del movimiento (o de la parte).
+25. **Totales.** Un `passthrough`, `loan`, `transfer` o `reimbursable` no suma ni a entradas ni a salidas en ningún total. Un movimiento dividido suma por parte.
+26. **Sugerencia, nunca silenciosa.** Clasifico una compra en un comercio; la siguiente captura del mismo comercio (normalizado) llega con el botón de sugerencia y la muestra en el detalle, pero sigue sin `kind` hasta que la acepto.
+27. **Clasificar desde la notificación.** Toco "✓ Supermercado" con la app cerrada desde el switcher → el movimiento queda `expense`/Supermercado sin abrir la app.
+28. **Yappy sin regla.** Una persona clasificada igual menos de 3 veces seguidas no genera sugerencia.
+29. **División que no suma.** Al guardar, se rechaza una división cuyas partes no suman el monto.
+30. **Re-parseo con división.** Si un re-parseo cambia el monto de un movimiento dividido, las partes se conservan y el movimiento aparece en "Requiere revisión".
+31. **Export v2.** El CSV trae `id`, `kind`, `category`, `subcategory` y `splitGroupId`; un movimiento dividido en 2 sale como 2 filas con el mismo `splitGroupId` y montos que suman el original.
 
 ## Pruebas
 
@@ -264,7 +345,7 @@ End Repeat
 | Pregunta | Decisión |
 |---|---|
 | ¿Importar CSVs existentes en v1? | No. v1.1, después del período en paralelo. Se implementa como un parser más que asigna `parseStatus` |
-| ¿Categorías fijas? | No en v1. Derivarlas de ~2 meses de notas reales. En v2, evaluar sugerencia on-device con Foundation Models |
+| ¿Categorías fijas? | No en v1. En v2, lista fija tomada de los topes del presupuesto, con `kind` aparte; ver [v2 — Clasificación](#v2--clasificación). Sugerencia por reglas de comercio, no con Foundation Models |
 | ¿Sincronización iCloud en v2? | Solo si el auto-export no basta |
 | Nombre de la app | **Gastario** |
 | ¿Yappy Comercial (cuenta del negocio)? | Se registra como `inflow`. La deduplicación usa `confirmation` + `direction` para no perder el lado personal de un pago al propio negocio |
