@@ -1,4 +1,4 @@
-# SPEC.md — Gastario v1, plan de implementación por fases
+# SPEC.md — Gastario, plan de implementación por fases (v1 y v2)
 
 `INTENT.md` define **qué** se construye y **por qué**. Este documento define **cómo** y **en qué orden**. Si hay conflicto, gana `INTENT.md`, salvo en los puntos marcados como **Cambio propuesto** (sección 2), que deben confirmarse antes de la fase que los usa.
 
@@ -30,6 +30,7 @@ Huecos encontrados al convertir el intent en fases. Cada uno tiene una decisión
 | C13 | **Confirmado e incorporado a `INTENT.md`.** `INTENT.md` no definía el texto de la notificación para una tarjeta `failed` (el parser lanzó) ni para un Yappy `partial` sin contraparte, ni los títulos. | Tarjeta `failed`: "No pude leer un pago con tarjeta, revísalo en la app." Sin contraparte: la pregunta sin el "en …" ("¿En qué gastaste $49.06?"). Títulos: "Gasto", "Ingreso", "Revisar movimiento". | 3 |
 | C14 | **Confirmado e incorporado a `INTENT.md`.** Abrir un link adjunto con `Link` lo manda a Safari: cada factura deja una pestaña abierta. | Los links adjuntos abren dentro de la app con `SFSafariViewController`, presentado a pantalla completa. El link a Maps del detalle no cambia. | 6 |
 | C15 | **Confirmado e incorporado a `INTENT.md`.** `INTENT.md` no decía qué pasa al tocar la notificación (no "Responder"): el delegate la ignoraba. | Tocar la notificación abre el detalle del movimiento y el editor con el cursor en la nota. El delegate deja el ID en `NotificationRouter`; la lista navega (cerrando lo que esté abierto) y el detalle abre el editor. | 3 |
+| C16 | **Confirmado e incorporado a `INTENT.md`.** `INTENT.md` dejaba las categorías para v2, "derivadas de ~2 meses de notas". Ya existe la fuente real: los topes del presupuesto. Y clasificar solo por categoría no distingue pasamanos, préstamos ni reembolsos. | Sección [v2 — Clasificación](INTENT.md#v2--clasificación): `kind` (8 tipos) aparte de la categoría, reglas por comercio con sugerencia en la notificación y división en partes. Fases 8–10. | 8–10 |
 | C11 | Un pago de la cuenta personal al propio negocio llega dos veces con la misma `confirmation`; deduplicar solo por `confirmation` pierde uno. | **Confirmado e incorporado a `INTENT.md`.** Clave de deduplicación = `confirmation` + `direction`. | 2 |
 
 ## 3. Arquitectura y convenciones (aplican a todas las fases)
@@ -82,6 +83,9 @@ Por qué dos paquetes y no uno: un agente que corre en la nube (Linux) puede des
 | 5 | Exportar y respaldo | CSV en iCloud Drive sin abrir la app | 11, 21 | 2, 4 |
 | 6 | Adjuntos | Foto, PDF, link y QR por movimiento | 15, 19, 20 | 4 |
 | 7 | Transición | Shortcuts viejos retirados con evidencia | — | 3 + 2–3 semanas |
+| 8 | Tipo y categoría (v2) | Clasifico a mano; resumen y CSV respetan el `kind` | 22, 23, 24, 25, 31 (parcial) | 4, 5 |
+| 9 | Reglas y sugerencias (v2) | La segunda compra en un comercio se clasifica con un toque desde la notificación | 26, 27, 28 | 3, 8 |
+| 10 | Dividir movimientos (v2) | Un movimiento repartido en partes con su propia clasificación | 25, 29, 30, 31 | 8 |
 
 Las fases 0 y 1 pueden correr en paralelo (dos agentes, dos ramas). La Fase 1 es dueña de `Packages/GastarioParsing`; la Fase 0 no lo crea.
 
@@ -349,6 +353,90 @@ Los cuerpos deben ser **reales**, copiados desde Mail (seleccionar todo el cuerp
 
 ---
 
+## Fase 8 — Tipo y categoría
+
+**Objetivo.** Clasificar cada movimiento con `kind` y categoría a mano, ver lo que falta clasificar y tener totales y CSV que respeten la clasificación ([`INTENT.md`, v2](INTENT.md#v2--clasificación)).
+
+**Alcance.**
+- `GastarioCore`: enums `MovementKind`, `ExpenseCategory`, `FixedCategory` (o un `Category` con su `kind`) y `TransportSubcategory`, con `String` raw value. Cada categoría sabe si es "fuera del presupuesto". `MovementKind.allowed(for: Direction)`.
+- **Esquema versionado.** `SchemaV1` (el modelo actual, congelado) y `SchemaV2` (agrega `kind`, `category`, `subcategory` opcionales a `Movement`), con `SchemaMigrationPlan` de etapa liviana. Solo se agregan atributos opcionales: nada se renombra ni se borra.
+- `MovementEditor.classify(_:kind:category:subcategory:)`: valida dirección y categoría obligatoria; lanza un error tipado que el editor muestra. Nunca se usa en el camino de captura.
+- `ParseApplier`/`ReparseService` no tocan los campos nuevos.
+- Resumen del mes: salidas = `expense` + `fixed_expense` + `debt_payment` + por clasificar `outflow`; entradas = `income` + por clasificar `inflow`. Los demás `kind` no suman.
+- Lista: filtro "Por clasificar" con su cuenta; badge en la fila.
+- Editor: sección "Clasificación" con `kind` filtrado por `direction`, categoría y subcategoría (solo Transporte). "Guardar" deshabilitado si falta la categoría obligatoria.
+- CSV: `id` como primera columna, más `kind`, `category`, `subcategory` y `splitGroupId` (vacío hasta la Fase 10). `Tools/TransitionReport` lee por nombre de columna: verificar que sigue leyendo el export nuevo.
+
+**Pruebas automáticas.**
+- Migración: un store creado con `SchemaV1` en disco (con nota y adjunto) abre con `SchemaV2`, conserva todo y queda con `kind == nil`. (AC-22)
+- `classify` rechaza `expense` sin categoría, `income` en un `outflow` y `expense` en un `inflow`. (AC-23, AC-24)
+- Resumen mensual con un movimiento de cada `kind` y uno por clasificar. (AC-25)
+- Re-parsear un movimiento clasificado conserva la clasificación.
+- CSV golden con `id` y las columnas nuevas. (AC-31, parcial)
+
+**Gate de salida.**
+- [ ] Tests verdes.
+- [ ] 📱 Actualizar la app sobre los datos reales: abre, no falta ningún movimiento y todos aparecen en "Por clasificar". (AC-22)
+- [ ] 📱 Clasificar un gasto, un pasamanos y un ingreso; el resumen cambia como corresponde.
+- [ ] 📱 "Exportar ahora" abre en Numbers con las columnas nuevas.
+
+---
+
+## Fase 9 — Reglas y sugerencias
+
+**Objetivo.** Que la mayoría de los movimientos se clasifique con un toque, desde la notificación.
+
+**Alcance.**
+- `GastarioParsing/CounterpartyNormalizer`: función pura (solo `Foundation`), probada en Linux con contrapartes reales (Q6).
+- `ClassificationRule` en `SchemaV3` (entidad nueva, migración liviana). Unicidad por fetch explícito de `counterpartyKey`, no `@Attribute(.unique)`.
+- `GastarioCore/Classification/SuggestionService`:
+  - Tarjeta: regla por `counterpartyKey`. Clasificar un movimiento de tarjeta (en el editor, con "Aplicar" o desde la notificación) crea o actualiza la regla.
+  - Yappy: sin reglas; sugiere si las últimas 3 clasificaciones de esa contraparte en Yappy coinciden.
+- Notificaciones: una `UNNotificationCategory` por combinación de `kind` y categoría, con "Responder" y "✓ <etiqueta>", ninguna con `.foreground`. Se registran todas en `didFinishLaunching`. `NotificationService` busca la sugerencia al programar; si falla o no hay, usa `MOVEMENT_QUESTION` como hoy.
+- `AppDelegate`: la acción de sugerencia clasifica vía `MovementEditor.classify` y guarda antes de retornar (mismo patrón que la respuesta, C15 y AC-8).
+- Detalle: sugerencia con "Aplicar" cuando el movimiento no tiene `kind`.
+
+**Pruebas automáticas.**
+- `CounterpartyNormalizer` con los casos de Q6.
+- Regla: clasificar dos veces el mismo comercio distinto → gana la última.
+- Sugerencia de tarjeta presente pero el movimiento sigue sin `kind`. (AC-26)
+- Yappy: 2 iguales → sin sugerencia; 3 iguales → sugerencia; 3 con una distinta → sin sugerencia. (AC-28)
+- Identificador de categoría ↔ (`kind`, categoría) ida y vuelta para todas las combinaciones.
+
+**Gate de salida.**
+- [ ] Tests verdes.
+- [ ] 📱 AC-26: segunda compra en el mismo comercio llega con el botón de sugerencia.
+- [ ] 📱 AC-27: tocar la sugerencia con la app cerrada desde el switcher clasifica sin abrir la app.
+- [ ] 📱 "Responder" sigue guardando la nota en una notificación con sugerencia (AC-8).
+
+---
+
+## Fase 10 — Dividir movimientos
+
+**Objetivo.** Repartir un movimiento entre varios `kind`/categorías sin tocar su crudo.
+
+**Alcance.**
+- `Allocation` en `SchemaV4` con `deleteRule: .cascade` desde `Movement`.
+- `MovementEditor.split(_:into:)`: rechaza si la suma ≠ `amount` o si alguna parte no es válida para la `direction`; al dividir, limpia `kind`/`category` del movimiento. Quitar la división vuelve al estado por clasificar.
+- `needsReview` incluye "las partes no suman el monto" (además de `parseStatus != ok`).
+- Resumen y filtro "Por clasificar" suman y miran por parte.
+- CSV: una fila por parte con su `id`, su monto con signo y `splitGroupId`.
+- `Tools/TransitionReport`: si la Fase 7 sigue abierta, agrupar por `splitGroupId` para no contar dos veces un movimiento dividido.
+- UI: "Dividir" en el detalle, con el restante por asignar visible.
+
+**Pruebas automáticas.**
+- Suma ≠ monto → error; suma exacta con `Decimal` (sin errores de redondeo). (AC-29)
+- Re-parseo que cambia el monto → partes intactas y `needsReview`. (AC-30)
+- Resumen con un movimiento dividido en `expense` y `reimbursable`. (AC-25)
+- CSV golden con un movimiento dividido en 2 filas. (AC-31)
+- Borrar un movimiento dividido borra sus partes.
+
+**Gate de salida.**
+- [ ] Tests verdes.
+- [ ] 📱 Dividir una compra real en dos partes; el resumen y el CSV la reflejan.
+
+---
+
 ## 4. Trazabilidad AC → Fase
 
 | AC | Descripción corta | Prueba automática | Verificación 📱 |
@@ -374,6 +462,16 @@ Los cuerpos deben ser **reales**, copiados desde Mail (seleccionar todo el cuerp
 | 19 | Adjunto persistente | — | F6 |
 | 20 | QR de factura | F6 (validación) | F6 |
 | 21 | Auto-export sin abrir la app | F5 (policy) | F5 |
+| 22 | Por clasificar | F8 (migración) | F8 |
+| 23 | Gasto sin categoría | F8 | — |
+| 24 | Tipo y dirección | F8 | — |
+| 25 | Totales por `kind` | F8, F10 | F8 |
+| 26 | Sugerencia, nunca silenciosa | F9 | F9 |
+| 27 | Clasificar desde la notificación | — | F9 |
+| 28 | Yappy sin regla | F9 | — |
+| 29 | División que no suma | F10 | — |
+| 30 | Re-parseo con división | F10 | — |
+| 31 | Export v2 | F8, F10 (golden) | F8, F10 |
 
 ## 5. Preguntas abiertas (bloquean la fase indicada)
 
@@ -384,3 +482,4 @@ Los cuerpos deben ser **reales**, copiados desde Mail (seleccionar todo el cuerp
 | Q3 | ~~Formato exacto del `Amount` que entrega el trigger de Wallet hoy (revisar el CSV viejo: ¿`3.80`, `$3.80`, `B/.3.80`?).~~ **Resuelta:** `$46.55` (con `$` y punto decimal), visto en "Datos recibidos" de una compra real con Apple Pay. `AmountParser` ya lo cubría; queda una prueba con ese formato. | F1 (fixtures), F2 |
 | Q4 | ~~Confirmar C1–C9 o indicar cuáles cambian.~~ **Resuelta:** confirmados. | F0 (C1, C2), F5, F6 |
 | Q5 | ~~¿La lista muestra montos de `partial` con `amount = 0` como `$0.00` o como "—"?~~ **Resuelta:** "—" con el badge de revisión. | F0 |
+| Q6 | Entre 5 y 10 `counterparty` crudos de tarjeta, tal como llegan (con prefijos, sucursales, mayúsculas), para fijar las reglas de `CounterpartyNormalizer`. | F9 |

@@ -21,8 +21,11 @@ App iOS que registra cada pago con Apple Pay y cada Yappy, y permite anotar en q
 | 5. Exportar y respaldo (iCloud Drive) | Implementada. 📱 Verificado: AC-11 ("Exportar ahora" abre en Numbers). Falta: AC-21 (auto-export, requiere cuenta pagada) y export fallido |
 | 6. Adjuntos (foto, PDF, link, QR de factura) | Implementada. 📱 Verificado: QR, PDF, foto y borrar un adjunto. Falta: AC-19 (PDF de 5 MB tras reabrir), AC-15 completo y captura durante el flujo de adjuntar |
 | 7. Transición | En curso: período en paralelo. Herramienta de comparación lista ([cómo usarla](#transición-fase-7)) |
+| 8. Tipo y categoría (v2) | Especificada ([`SPEC.md`](SPEC.md#fase-8--tipo-y-categoría)). Sigue después de la Fase 7 o en paralelo |
+| 9. Reglas y sugerencias (v2) | Especificada. Bloqueada por Q6 |
+| 10. Dividir movimientos (v2) | Especificada |
 
-Sin preguntas abiertas. Detalle de cada fase en el [mapa de fases](SPEC.md#mapa-de-fases).
+Pregunta abierta: [Q6](SPEC.md#5-preguntas-abiertas-bloquean-la-fase-indicada) (contrapartes reales de tarjeta, bloquea la Fase 9). Detalle de cada fase en el [mapa de fases](SPEC.md#mapa-de-fases).
 
 ## Requisitos
 
