@@ -177,7 +177,7 @@ End Repeat
 - Categoría con `UNTextInputNotificationAction` ("Responder"), **sin** la opción `.foreground`. La respuesta se guarda en `note` sin abrir la app.
 - Tocar la notificación abre la app en el detalle del movimiento, con el editor abierto y el cursor en la nota.
 - El delegate se registra en un `UIApplicationDelegateAdaptor`, en `application(_:didFinishLaunchingWithOptions:)`. **No** en `.onAppear` ni en el `init` de una vista.
-- El `completionHandler` se llama **después** de que el save de `note` termine.
+- El `completionHandler` se llama **después** de que el save de `note` termine, y **en el hilo principal**: al tocar la notificación, UIKit lo exige y de lo contrario la app muere al abrirse.
 
 ## UI
 
