@@ -1,17 +1,58 @@
 name: CI
 
+# En repos privados cada minuto de macOS cuesta 10 del cupo de Actions, así que:
+# - cada commit corre una sola vez: push solo en main y los PRs por pull_request
+#   (antes un commit de un PR corría por push y por pull_request);
+# - si el cambio es solo de documentación (*.md), no corren linux ni macos;
+# - macos espera a linux y no corre si linux falla.
+# Para correrlo a mano en cualquier rama: "Run workflow" (workflow_dispatch).
 on:
   push:
-    branches: [main, "claude/**", "phase-*"]
+    branches: [main]
   pull_request:
+  workflow_dispatch:
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
 jobs:
+  cambios:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      codigo: ${{ steps.diff.outputs.codigo }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: ¿Cambia algo además de documentación?
+        id: diff
+        env:
+          EVENTO: ${{ github.event_name }}
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          # Ante cualquier duda (corrida manual, rama nueva, base que no se puede comparar), verifica todo.
+          if [[ $EVENTO == workflow_dispatch || -z $BASE || $BASE =~ ^0+$ ]]; then
+            echo "codigo=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! archivos=$(git diff --name-only "$BASE" HEAD); then
+            echo "codigo=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "$archivos"
+          if grep -qvE '\.md$' <<< "$archivos"; then
+            echo "codigo=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Solo documentación: no corren linux ni macos."
+            echo "codigo=false" >> "$GITHUB_OUTPUT"
+          fi
+
   # GastarioParsing debe compilar y pasar en Linux (SPEC §3 y gate de la Fase 1).
   linux:
+    needs: cambios
+    if: needs.cambios.outputs.codigo == 'true'
     runs-on: ubuntu-24.04
     # Mantener alineada con SWIFT_VERSION en .claude/hooks/session-start.sh.
     container: swift:6.4.1-noble
@@ -24,6 +65,8 @@ jobs:
         run: scripts/verify.sh
 
   macos:
+    needs: [cambios, linux]
+    if: needs.cambios.outputs.codigo == 'true'
     # El SDK de iOS 27 requiere el Xcode más reciente del runner.
     runs-on: macos-26
     timeout-minutes: 30
