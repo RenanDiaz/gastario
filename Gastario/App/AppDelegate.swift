@@ -25,20 +25,34 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     // valores `Sendable` cruzan al `MainActor`.
 
     /// "Responder" guarda la nota sin abrir la app; el sistema da por terminada la respuesta
-    /// cuando este método retorna, con la nota ya guardada (`INTENT.md`, el completion va después
-    /// del save). Tocar la notificación abre el detalle del movimiento (C15).
+    /// cuando se llama `completionHandler`, con la nota ya guardada (`INTENT.md`, el completion va
+    /// después del save). Tocar la notificación abre el detalle del movimiento (C15).
+    ///
+    /// Forma con completion handler y no `async`: con la variante `async`, el thunk que genera el
+    /// compilador llama al completion desde el executor genérico (un hilo secundario), y para la
+    /// acción por defecto UIKit responde con `-[UIApplication _updateSnapshotAndStateRestoration
+    /// WithAction:windowScene:]`, que exige el hilo principal: `NSInternalInconsistencyException`
+    /// "Call must be made on main thread" y la app muere con SIGABRT al abrirse. Aquí el
+    /// completion se llama desde el `MainActor`.
     nonisolated func userNotificationCenter(
-        _ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse
-    ) async {
-        guard let movementID = UUID(uuidString: response.notification.request.identifier) else { return }
-        switch response.actionIdentifier {
-        case NotificationIDs.replyAction:
-            guard let text = (response as? UNTextInputNotificationResponse)?.userText else { return }
-            await saveReply(movementID: movementID, text: text)
-        case UNNotificationDefaultActionIdentifier:
-            await openMovement(movementID)
-        default:
-            return
+        _ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping @Sendable () -> Void
+    ) {
+        let movementID = UUID(uuidString: response.notification.request.identifier)
+        let action = response.actionIdentifier
+        let text = (response as? UNTextInputNotificationResponse)?.userText
+        Task { @MainActor in
+            defer { completionHandler() }
+            guard let movementID else { return }
+            switch action {
+            case NotificationIDs.replyAction:
+                guard let text else { return }
+                await saveReply(movementID: movementID, text: text)
+            case UNNotificationDefaultActionIdentifier:
+                openMovement(movementID)
+            default:
+                return
+            }
         }
     }
 

@@ -16,7 +16,7 @@ App iOS que registra cada pago con Apple Pay y cada Yappy, y permite anotar en q
 | 0. Fundación | Cerrada |
 | 1. Parsers | Cerrada |
 | 2. Captura ([`docs/shortcuts.md`](docs/shortcuts.md)) | Implementada. 📱 Verificado: una compra con Apple Pay quedó guardada con monto, comercio, tarjeta y ubicación. Faltan el resto de las verificaciones 📱 del gate |
-| 3. Notificaciones | Implementada. 📱 Verificado: AC-8 (responder con la app cerrada guarda la nota). Falta: AC-1 con un pago, AC-7/12, que un duplicado no notifique y tocar la notificación (C15) |
+| 3. Notificaciones | Implementada. 📱 Verificado: AC-8 (responder con la app cerrada guarda la nota). Falta: AC-1 con un pago, AC-7/12, que un duplicado no notifique y tocar la notificación (C15; corregido el cierre al abrirse, pendiente de verificar en el iPhone) |
 | 4. Revisión y edición | Implementada. Fixtures comparados con un cuerpo crudo real. 📱 Verificado: borrar. Falta: AC-9, AC-13, AC-14, AC-18 |
 | 5. Exportar y respaldo (iCloud Drive) | Implementada. 📱 Verificado: AC-11 ("Exportar ahora" abre en Numbers). Falta: AC-21 (auto-export, requiere cuenta pagada) y export fallido |
 | 6. Adjuntos (foto, PDF, link, QR de factura) | Implementada. 📱 Verificado: QR, PDF, foto y borrar un adjunto. Falta: AC-19 (PDF de 5 MB tras reabrir), AC-15 completo y captura durante el flujo de adjuntar |
@@ -105,7 +105,7 @@ gastario/
 │   ├── Export/              # respaldo semanal del CSV en iCloud Drive
 │   ├── Attachments/         # adjuntos: foto, PDF, link y QR
 │   ├── Settings/
-│   └── Debug/
+│   └── Debug/               # menú Debug: muestras, borrar todo y notificación de prueba (C15)
 ├── Packages/
 │   ├── GastarioParsing/     # parsers puros, solo Foundation, probados también en Linux
 │   └── GastarioCore/        # SwiftData y servicios, solo plataformas Apple

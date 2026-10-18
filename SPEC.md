@@ -219,6 +219,7 @@ Los cuerpos deben ser **reales**, copiados desde Mail (seleccionar todo el cuerp
 - Movimientos `manual` no notifican (el `CaptureService` no participa en la entrada manual; se cubre en Fase 4).
 - Reemplazar el no-op de Fase 2 por `NotificationService`.
 - Swift 6: los métodos del delegate son `nonisolated` y solo pasan valores `Sendable` al `MainActor`; permiso y programación usan las APIs `async` desde funciones `nonisolated` (un completion handler creado en el `MainActor` y llamado desde otro hilo falla la verificación de aislamiento).
+- `didReceive` usa la forma con completion handler, no la `async`, y llama el completion desde el `MainActor`. Con la forma `async`, el thunk del compilador lo llama desde el executor genérico; para la acción por defecto UIKit responde en `-[UIApplication _updateSnapshotAndStateRestorationWithAction:windowScene:]`, que exige el hilo principal, y la app muere con `NSInternalInconsistencyException` al abrirse desde la notificación (C15). "Responder" no pasa por ahí, por eso AC-8 funcionaba.
 - El detalle de solo lectura muestra `note` y `notedAt`, para verificar AC-8 en el dispositivo.
 
 **Pruebas automáticas.**
@@ -231,7 +232,7 @@ Los cuerpos deben ser **reales**, copiados desde Mail (seleccionar todo el cuerp
 - [x] 📱 AC-8: dejar la notificación varias horas, matar la app desde el switcher, responder desde el Centro de Notificaciones → abrir la app → `note` y `notedAt` guardados.
 - [ ] 📱 AC-7 y AC-12: llegan las notificaciones de revisión / completar.
 - [ ] 📱 Dedup: un correo repetido no genera segunda notificación (AC-6).
-- [ ] 📱 C15: tocar la notificación, con la app cerrada y con la app abierta en otra pantalla, abre el detalle del movimiento con el teclado en la nota.
+- [ ] 📱 C15: tocar la notificación, con la app cerrada y con la app abierta en otra pantalla, abre el detalle del movimiento con el teclado en la nota. Para probarlo sin capturar nada: Debug → "Notificación de prueba en 5 s" programa la notificación del movimiento más reciente.
 
 **Riesgos.** Si `didReceive` llega antes de que el container esté listo, la respuesta se pierde: por eso el container se crea síncronamente en `didFinishLaunching`. Medir que no exceda el tiempo de arranque en frío.
 
