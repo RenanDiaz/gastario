@@ -76,7 +76,7 @@ swift run --package-path Tools/TransitionReport transition-report \
 scripts/verify.sh
 ```
 
-Es lo mismo que corre CI (GitHub Actions, en cada push a `main`, `claude/**` y `phase-*`, y en cada PR):
+Es lo mismo que corre CI (GitHub Actions, en cada push a `main` y en cada commit de un PR; a mano con "Run workflow" en cualquier rama). Si el cambio es solo de documentación (`*.md`), no corre ningún job, y `macos` solo corre si pasó `linux`: cada minuto de macOS cuesta 10 del cupo de Actions:
 
 | Job | Runner | Qué verifica |
 |---|---|---|
