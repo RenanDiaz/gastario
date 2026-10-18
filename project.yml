@@ -1,0 +1,66 @@
+name: Gastario
+
+options:
+  bundleIdPrefix: com.renandiaz
+  # iOS 26.0 y no 27: los runners de GitHub solo traen Xcode 26.x (SPEC §2, C12).
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+  developmentLanguage: es
+
+configFiles:
+  Debug: Configs/Base.xcconfig
+  Release: Configs/Base.xcconfig
+
+packages:
+  GastarioParsing:
+    path: Packages/GastarioParsing
+  GastarioCore:
+    path: Packages/GastarioCore
+
+targets:
+  Gastario:
+    type: application
+    platform: iOS
+    sources: [Gastario]
+    dependencies:
+      - package: GastarioCore
+    # NSUbiquitousContainers es un diccionario y no tiene clave INFOPLIST_KEY_: XcodeGen genera el
+    # Info.plist (no se versiona) y Xcode le suma las claves INFOPLIST_KEY_* de abajo.
+    info:
+      path: Gastario/Info.plist
+      properties:
+        # Sin esto XcodeGen fija 1.0 / 1 y pisa las versiones de Configs/Base.xcconfig.
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSUbiquitousContainers:
+          iCloud.com.renandiaz.Gastario:
+            # Hace visible la carpeta "Gastario" en Archivos → iCloud Drive.
+            NSUbiquitousContainerIsDocumentScopePublic: true
+            NSUbiquitousContainerName: Gastario
+            NSUbiquitousContainerSupportedFolderLevels: None
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.renandiaz.Gastario
+        # Capabilities (App Groups, iCloud) en Configs/*.entitlements. El archivo lo elige
+        # Configs/Base.xcconfig; un equipo personal sin iCloud lo cambia en Local.xcconfig.
+        CODE_SIGN_ENTITLEMENTS: $(GASTARIO_ENTITLEMENTS)
+        INFOPLIST_KEY_CFBundleDisplayName: Gastario
+        # Ícono en Gastario/Assets.xcassets (variantes clara, oscura y tintada); fuente en docs/marca/.
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: complete
+        TARGETED_DEVICE_FAMILY: "1"
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        # Adjuntos (SPEC Fase 6): foto con la cámara y escaneo del QR de la factura.
+        INFOPLIST_KEY_NSCameraUsageDescription: Gastario usa la cámara para fotografiar comprobantes y escanear el QR de la factura electrónica.
+        INFOPLIST_KEY_NSPhotoLibraryUsageDescription: Gastario adjunta fotos de comprobantes a tus movimientos.
+
+schemes:
+  Gastario:
+    build:
+      targets:
+        Gastario: all

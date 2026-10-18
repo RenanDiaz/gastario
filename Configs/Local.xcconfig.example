@@ -1,0 +1,6 @@
+// Copia este archivo a Configs/Local.xcconfig (está en .gitignore) y pon tu Team ID.
+DEVELOPMENT_TEAM = XXXXXXXXXX
+
+// Solo con un equipo personal (cuenta gratis), que no admite iCloud: quita el respaldo
+// automático para poder firmar. "Exportar ahora" sigue ofreciendo el CSV para compartir.
+// GASTARIO_ENTITLEMENTS = Configs/Gastario-SinICloud.entitlements
