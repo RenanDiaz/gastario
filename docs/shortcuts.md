@@ -55,3 +55,45 @@ End Repeat
 3. En Atajos, corre la automatización de correo a mano dos veces sobre el mismo correo: un solo movimiento.
 4. El CSV viejo tiene las filas nuevas.
 5. Cierra Gastario desde el switcher y repite 1: el intent corre igual con la app terminada.
+
+## Diagnóstico de facturas (spike S1, temporal)
+
+Censo de los correos que **no** son de Yappy, para el [spike S1](../SPEC.md#spike-s1--correos-de-factura-electrónica). No toca Gastario: solo escribe archivos de texto en iCloud Drive. Se quita al cerrar el spike. Los resultados se anotan en [`docs/spikes/invoice-emails.md`](spikes/invoice-emails.md).
+
+En la misma automatización de **Email**, **después** del `End Repeat` del Yappy, agrega un segundo `Repeat`. El trigger no cambia.
+
+```
+Repeat with each item in Email                    ← el de Yappy, sin cambios
+    …
+End Repeat
+
+Repeat with each item in Email                    ← diagnóstico S1
+    If Repeat Item → Sender does not contain notificaciones@yappy.com.pa
+        Text
+            <Date Received> | <Sender> | <Subject> | <Attachments>
+        Append to Text File
+            Archivo: iCloud Drive/Gastario-Spike/censo.txt
+            Crear si no existe, nueva línea
+        Text
+            <Subject> <Content>
+        Change Case → lowercase
+        If Updated Text contains "factura"  (Any de: "factura", "cufe", "cafe", "dgi-fep", "comprobante")
+            Text
+                === <Date Received> | <Sender> | <Subject> | <Attachments>
+                <Repeat Item → Content>
+            Append to Text File
+                Archivo: iCloud Drive/Gastario-Spike/facturas-<Current Date, yyyy-MM-dd>.txt
+                Crear si no existe, nueva línea
+        End If
+    End If
+End Repeat
+```
+
+- **Va en un segundo `Repeat` y no dentro del de Yappy.** Si algo del diagnóstico falla, el atajo se detiene, pero el Yappy del mismo lote ya se registró en el primero.
+- El `If` con varias condiciones se arma con **"Any"** (cualquiera). Si tu versión de Atajos no deja varias condiciones, usa un `If` anidado por palabra, o solo "factura" y "cufe".
+- `Change Case` existe porque *contains* puede distinguir mayúsculas: "Factura" y "FACTURA" tienen que entrar.
+- **`<Attachments>`:** toca la variable `Repeat Item` y mira si en sus propiedades aparece algo como *Attachments*. Si existe, inclúyela. Si no, escribe `n/a`: esa es la respuesta a S1.4.
+- Si `Date Received` no aparece entre las propiedades, usa `Current Date`.
+- `censo.txt` tiene remitente y asunto de **todos** tus correos: queda en tu iCloud Drive y no se sube al repo.
+
+**Para comprobar que funciona:** mándate un correo con asunto "Prueba factura" desde otra cuenta. Debe aparecer en `censo.txt` y en `facturas-<hoy>.txt`. Después recibe o envía un Yappy: tiene que entrar a Gastario igual que antes.

@@ -86,8 +86,12 @@ Por qué dos paquetes y no uno: un agente que corre en la nube (Linux) puede des
 | 8 | Tipo y categoría (v2) | Clasifico a mano; resumen y CSV respetan el `kind` | 22, 23, 24, 25, 31 (parcial) | 4, 5 |
 | 9 | Reglas y sugerencias (v2) | La segunda compra en un comercio se clasifica con un toque desde la notificación | 26, 27, 28 | 3, 8 |
 | 10 | Dividir movimientos (v2) | Un movimiento repartido en partes con su propia clasificación | 25, 29, 30, 31 | 8 |
+| S1 | Spike: correos de factura | Censo de correos reales, fixtures y decisión go/no-go | — | 2 (atajo de correo activo) |
+| 11 | Facturas por correo (v1.1) | Llega la factura por correo → queda asignada al movimiento | AC-F1…F9 (propuestos) | 6, 8, S1 |
 
 Las fases 0 y 1 pueden correr en paralelo (dos agentes, dos ramas). La Fase 1 es dueña de `Packages/GastarioParsing`; la Fase 0 no lo crea.
+
+El spike S1 no lleva código de la app y conviene **arrancarlo ya**, en paralelo con la Fase 7: es recolección de correos reales durante 2–3 semanas. La Fase 11 depende de la Fase 8 solo por el esquema versionado (`SchemaMigrationPlan`); no necesita las reglas ni la división.
 
 ---
 
@@ -438,6 +442,156 @@ Los cuerpos deben ser **reales**, copiados desde Mail (seleccionar todo el cuerp
 
 ---
 
+## Spike S1 — Correos de factura electrónica
+
+**Objetivo.** Saber con correos reales cómo llegan las facturas electrónicas, para decidir si Gastario las puede atrapar con el atajo de correo que ya existe y asignarlas a un movimiento ([`INTENT.md`, v1.1](INTENT.md#v11--facturas-por-correo-candidato)). Es investigación: el entregable es un documento con fixtures y una decisión.
+
+**Punto de partida (ya verificado).**
+- El atajo de Yappy corre con **cada** correo, sin filtro en el trigger, y filtra con un `If` dentro del `Repeat` ([`docs/shortcuts.md`](docs/shortcuts.md#yappy-correo)). No hace falta otro trigger: basta una rama `Otherwise`.
+- Ya llegó un recibo de comercio junto con un Yappy. Hoy el `If` lo descarta.
+- `Content` entrega HTML o texto plano. `HTMLText` (Fase 1) ya convierte HTML a texto sin WebKit.
+
+**Procedimiento** (la persona instala el atajo y copia los correos; el agente analiza).
+1. **Inventario retroactivo.** En Mail, buscar `factura`, `CUFE`, `CAFE`, `comprobante`, `dgi-fep` en los últimos 3 meses. Por correo: remitente, dominio, asunto, si lo envía el comercio o un PAC, adjuntos (PDF, XML, ninguno) y si el cuerpo trae total, CUFE, RUC, fecha y link de la DGI.
+2. **Censo en el atajo existente**, 2–3 semanas. Va en un **segundo** `Repeat`, después del de Yappy, para que un fallo del diagnóstico nunca impida registrar un Yappy del mismo lote (principio 1):
+   ```
+   Repeat with each item in Email            ← el de Yappy, sin cambios
+      …
+   End Repeat
+   Repeat with each item in Email            ← diagnóstico, se quita al cerrar S1
+      If Repeat Item → Sender does not contain notificaciones@yappy.com.pa
+         Append to Text File  iCloud Drive/Gastario-Spike/censo.txt
+            "<Date Received> | <Sender> | <Subject> | <Attachments o 'n/a'>"
+         If Subject or Content contains factura / CUFE / dgi-fep
+            Append to Text File  iCloud Drive/Gastario-Spike/facturas-<fecha>.txt
+               "=== <Sender> | <Subject>\n<Content>"
+         End If
+      End If
+   End Repeat
+   ```
+   - El censo (remitente y asunto de **todo** correo) mide los falsos negativos del filtro por palabras: una factura que no dice "factura" aparece en el censo y no en `facturas-*.txt`.
+   - Los archivos quedan en iCloud Drive, nunca en el repo.
+   - El trigger no cambia: sigue sin filtro y con "Notificar al ejecutar" desactivado.
+3. **Cruce con movimientos.** Para cada factura, buscar el movimiento en Gastario y anotar la diferencia de monto, la de tiempo entre el pago y el correo, y si el nombre de Wallet/Yappy se parece al emisor.
+
+**Preguntas que cierra.**
+
+| # | Pregunta | Impacto en la Fase 11 |
+|---|---|---|
+| S1.1 | ¿Qué remitentes envían facturas? ¿Pocos PACs o uno por comercio? | Si el detector puede usar remitentes conocidos o depende solo de palabras |
+| S1.2 | ¿Qué palabras o patrones distinguen una factura de una promoción? | Reglas de `InvoiceEmailDetector` y su tasa de falsos negativos (contra el censo) |
+| S1.3 | ¿`Content` trae CUFE, total, RUC, fecha y link de la DGI en texto? | Si no, el parseo depende del adjunto (S1.4) |
+| S1.4 | ¿El `Email` de Atajos expone los adjuntos y se pueden pasar como archivo a un intent? | Si no, el PDF/XML solo entra por la Share Extension de v1.1 |
+| S1.5 | ¿El total de la factura coincide con lo cobrado? Propina, pago dividido, consumo parcial | Si el monto exacto falla seguido, casi todo queda como sugerencia |
+| S1.6 | Retraso entre el pago y el correo (mediana y máximo) | Ventana de candidatos del matcher |
+| S1.7 | ¿El emisor se parece al `counterparty` de Wallet? | Desempate en el matcher; cruza con Q6 (`CounterpartyNormalizer`) |
+| S1.8 | ¿Llega la misma factura dos veces, o factura + nota de crédito? | Dedup por CUFE y manejo de notas de crédito |
+| S1.9 | ¿Cuántos correos no-Yappy llegan al día? | Costo de invocar el intent con cada uno (ver Fase 11, riesgos) |
+
+**Entregables.**
+- `docs/spikes/invoice-emails.md`: inventario (remitentes por dominio, sin direcciones personales), respuestas S1.1–S1.9 y decisión **go / go reducido / no-go**.
+- `Packages/GastarioParsing/Tests/GastarioParsingTests/Fixtures/Invoice/`: al menos 5 cuerpos reales de emisores distintos, tal como los recibió el atajo, y 3 no-facturas que mencionan "factura" (promociones, estados de cuenta). Datos personales reemplazados conservando el formato, como en los fixtures de Yappy.
+
+**Criterio de decisión.**
+- **Go:** en ≥ 70 % de las facturas recolectadas el cuerpo trae total y CUFE (o el link de la DGI con CUFE), y el detector por palabras no pierde ninguna del censo.
+- **Go reducido:** los datos solo vienen en el adjunto y Atajos no lo expone → la Fase 11 se monta sobre la Share Extension de v1.1 (compartir el correo desde Mail), sin captura automática.
+- **No-go:** remitentes y formatos demasiado dispersos o solo PDF escaneado. Queda el adjunto manual de la Fase 6.
+
+**Gate de salida.**
+- [ ] 📱 Censo corriendo ≥ 2 semanas.
+- [ ] Inventario con ≥ 15 facturas de ≥ 5 emisores.
+- [ ] Fixtures commiteados y anonimizados.
+- [ ] Respuestas y decisión en `docs/spikes/invoice-emails.md`.
+- [ ] 📱 Segundo `Repeat` de diagnóstico retirado del atajo.
+
+---
+
+## Fase 11 — Facturas por correo (v1.1, sujeta a S1)
+
+> Hipótesis previa al spike. Lo que S1 contradiga se corrige aquí antes de abrir la fase.
+
+**Objetivo.** Una factura que llega por correo se captura sola, se parsea y queda asignada al movimiento que corresponde, o como sugerencia si no hay certeza. `CaptureService`, `LogCardMovementIntent` y `LogYappyEmailIntent` no cambian (principio 4).
+
+**Alcance.**
+- **`GastarioParsing`** (solo `Foundation`, se prueba en Linux):
+  - `InvoiceEmailDetector.isCandidate(sender:subject:text:) -> Bool`: generoso a propósito (palabras de S1.2 y remitentes de S1.1). Un falso positivo termina como `failed` en la bandeja; un falso negativo se pierde, por eso se audita (ver "Correos ignorados").
+  - `InvoiceEmailParser.parse(sender:subject:content:) -> ParsedInvoice`: `HTMLText` + `TextNormalizer` + `AmountParser`, reglas sacadas de los fixtures de S1. `failed` si no hay ni total ni CUFE; `partial` si falta alguno de emisor, fecha o link.
+  - `InvoiceMatcher.candidates(for:among:) -> [MatchCandidate]`: función pura sobre valores simples (monto, fecha, dirección, si ya tiene factura), no sobre `Movement`, para probarla en Linux. Hipótesis (ajustar con S1.5–S1.7):
+    - Solo `outflow` de cualquier `source`, sin factura confirmada, con `occurredAt` en `[issuedAt − 2 h, issuedAt + 72 h]` (o `capturedAt` de la factura si no hay `issuedAt`).
+    - **Fuerte:** monto exacto. **Débil:** total ≤ monto ≤ total × 1.20 (propina).
+    - Auto-asignar solo con **exactamente un** candidato fuerte que ninguna otra factura no bloqueada reclame. Todo lo demás → `suggested`.
+    - El emisor solo ordena, no decide.
+- **`GastarioCore`**:
+  - `Invoice` en el siguiente `SchemaVn` libre (migración liviana; si las Fases 9–10 ya se cerraron, `SchemaV5`):
+
+    | Campo | Tipo | Notas |
+    |---|---|---|
+    | `id` | UUID | |
+    | `rawContent`, `sender`, `subject` | String? | Tal como llegaron |
+    | `capturedAt` | Date | |
+    | `cufe` | String? | Dedup por fetch explícito, sin `.unique` (misma razón que `confirmation`) |
+    | `issuerName`, `issuerRUC` | String? | |
+    | `total` | Decimal? | |
+    | `issuedAt` | Date? | `America/Panama` |
+    | `dgiURL` | URL? | Validado con `AttachmentRules.link` |
+    | `parseStatusRaw`, `parseIssuesRaw` | | Mismo patrón que `Movement` |
+    | `matchStatusRaw` | String | `unmatched` \| `suggested` \| `autoLinked` \| `confirmed` \| `dismissed` |
+    | `matchLocked` | Bool | `true` al confirmar, desasignar o descartar a mano (principio 3) |
+    | `movement` | `Movement?` | `deleteRule: .nullify`: borrar el movimiento devuelve la factura a la bandeja |
+
+    `Movement` gana la inversa `invoices` (factura + nota de crédito pueden ser dos).
+  - `InvoiceCaptureService`, aparte de `CaptureService` y con su mismo patrón: (1) insertar con crudo y `failed` provisional, guardar; (2–3) parsear y aplicar; dedup por `cufe` **después** de parsear, borrando el recién insertado (como C11); (4) guardar; (5) asignar con `InvoiceMatcher` y guardar; (6) `backup.runIfDue()`. Sin notificación en v1.1. Un fallo del matcher deja la factura `unmatched`, nunca pierde la captura.
+  - `InvoiceRematcher.run()`: re-evalúa las `unmatched`/`suggested` no bloqueadas. Corre al volver la app a `.active` (el mismo punto que el respaldo) y desde Ajustes. Cubre la factura que llegó antes que el movimiento o el movimiento manual creado después.
+  - CSV: columna `invoiceCUFE` (la del primer `confirmed`/`autoLinked`), después de las de la Fase 8. Golden test actualizado; `Tools/TransitionReport` lee por nombre y no se ve afectado.
+- **App**:
+  - `LogInvoiceEmailIntent` ("Log Invoice Email"): parámetros `sender`, `subject`, `content`, todos opcionales (regla de la Fase 2). Si `InvoiceEmailDetector` dice que no es factura → **no guarda nada** y registra en "Correos ignorados". Devuelve `.result()` siempre que el store responda.
+  - **Correos ignorados:** los últimos 200 (fecha, remitente, asunto; sin cuerpo) en `UserDefaults` del App Group, visibles en Ajustes. Sirve para encontrar facturas que el detector se perdió y alimentar fixtures.
+  - Bandeja "Facturas sin asignar" (`unmatched` + `suggested`, y `failed` de parseo) con contador en la lista. Cada sugerencia: confirmar, elegir otro movimiento o descartar.
+  - Detalle del movimiento: facturas asignadas dentro de la sección de adjuntos; el link de la DGI abre con `SafariView` (C14); botón "Desasignar". Una factura asignada **no** se copia como `Attachment`: vive en `Invoice` para poder desasignarla sin perder nada.
+- **Atajo** (`docs/shortcuts.md`), rama nueva en el `If` existente:
+  ```
+  Repeat with each item in Email
+     If Repeat Item → Sender is notificaciones@yappy.com.pa
+        …                                    ← sin cambios
+     Otherwise
+        Log Invoice Email (Sender, Subject, Content)
+     End If
+  End Repeat
+  ```
+
+**Fuera de alcance.** Leer el PDF o el XML (depende de S1.4; con go reducido entra con la Share Extension). Notificar facturas. Usar el RUC como clave de `ClassificationRule` (más estable que el `counterparty` de Wallet; candidato después de la Fase 9).
+
+**Criterios de aceptación propuestos** (pasan a `INTENT.md` cuando S1 dé go):
+
+| # | Criterio |
+|---|---|
+| AC-F1 | Factura con total igual a un único pago de salida en la ventana → `autoLinked` a ese movimiento. |
+| AC-F2 | Dos pagos del mismo monto en la ventana → `suggested` con ambos; no se asigna sola. |
+| AC-F3 | Factura sin movimiento que calce → `unmatched`. Creo después el movimiento a mano y vuelvo a la app → pasa a `autoLinked` o `suggested`. |
+| AC-F4 | Mismo CUFE dos veces → una sola factura. |
+| AC-F5 | Factura que no parsea → se guarda con `rawContent` y `failed`, visible en la bandeja. |
+| AC-F6 | Desasigno una factura auto-asignada → el rematcher no la vuelve a asignar. |
+| AC-F7 | Borro un movimiento con factura → la factura vuelve a la bandeja. |
+| AC-F8 | Pago con propina (monto > total, ≤ 20 %) → sugerencia, no auto-asignación. |
+| AC-F9 | Un correo que no es factura no deja nada en el store y aparece en "Correos ignorados". Un Yappy del mismo lote entra igual. |
+
+**Pruebas automáticas.**
+- Linux: `InvoiceEmailDetector` con los fixtures de S1 (facturas y no-facturas); `InvoiceEmailParser` por fixture; `InvoiceMatcher` con tabla: exacto único, exacto duplicado, propina, fuera de ventana, `inflow` ignorado, movimiento con factura confirmada ignorado, otra factura reclamando el mismo movimiento.
+- macOS (`@MainActor`): `InvoiceCaptureService` con container en memoria: crudo guardado antes de parsear (parser que lanza), dedup por CUFE, matcher que lanza → `unmatched`; `InvoiceRematcher` respeta `matchLocked`; borrar un movimiento deja la factura con `movement == nil`; migración desde el esquema anterior con datos.
+
+**Gate de salida.**
+- [ ] Tests verdes.
+- [ ] Diff vacío en `CaptureService`, `LogCardMovementIntent` y `LogYappyEmailIntent`.
+- [ ] 📱 Una compra real con factura por correo queda asignada sin abrir la app.
+- [ ] 📱 AC-F2, AC-F6, AC-F7 y AC-F9 en el dispositivo.
+- [ ] 📱 Una semana sin facturas perdidas: cada factura del inventario de Mail del período está en Gastario o en "Correos ignorados" (y entonces se corrige el detector).
+
+**Riesgos.**
+- **Costo de correr el intent con cada correo** (S1.9): lanza el proceso en segundo plano por cada correo no-Yappy. Si en el dispositivo se nota en batería o en retraso del Yappy, se agrega un prefiltro por asunto en el atajo, aceptando que esa parte del filtro vuelve a Atajos.
+- Totales con ITBMS, redondeos o cargo por servicio pueden romper el "monto exacto"; S1.5 lo mide antes de fijar la regla.
+
+---
+
 ## 4. Trazabilidad AC → Fase
 
 | AC | Descripción corta | Prueba automática | Verificación 📱 |
@@ -484,3 +638,5 @@ Los cuerpos deben ser **reales**, copiados desde Mail (seleccionar todo el cuerp
 | Q4 | ~~Confirmar C1–C9 o indicar cuáles cambian.~~ **Resuelta:** confirmados. | F0 (C1, C2), F5, F6 |
 | Q5 | ~~¿La lista muestra montos de `partial` con `amount = 0` como `$0.00` o como "—"?~~ **Resuelta:** "—" con el badge de revisión. | F0 |
 | Q6 | Entre 5 y 10 `counterparty` crudos de tarjeta, tal como llegan (con prefijos, sucursales, mayúsculas), para fijar las reglas de `CounterpartyNormalizer`. | F9 |
+| Q7 | ¿Las facturas llegan a una cuenta de correo configurada en Mail del iPhone? El trigger solo ve esas cuentas. | S1 |
+| Q8 | ¿Se acepta que una factura se asigne sola sin avisar (AC-F1)? Default: sí, solo con candidato único y monto exacto; se puede desasignar. | F11 |

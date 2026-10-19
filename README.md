@@ -24,8 +24,10 @@ App iOS que registra cada pago con Apple Pay y cada Yappy, y permite anotar en q
 | 8. Tipo y categoría (v2) | Especificada ([`SPEC.md`](SPEC.md#fase-8--tipo-y-categoría)). Sigue después de la Fase 7 o en paralelo |
 | 9. Reglas y sugerencias (v2) | Especificada. Bloqueada por Q6 |
 | 10. Dividir movimientos (v2) | Especificada |
+| S1. Spike: correos de factura | Listo para arrancar: atajo de censo en [`docs/shortcuts.md`](docs/shortcuts.md#diagnóstico-de-facturas-spike-s1-temporal), bitácora en [`docs/spikes/invoice-emails.md`](docs/spikes/invoice-emails.md). En paralelo con la Fase 7 |
+| 11. Facturas por correo (v1.1) | Especificada, sujeta al resultado de S1 |
 
-Pregunta abierta: [Q6](SPEC.md#5-preguntas-abiertas-bloquean-la-fase-indicada) (contrapartes reales de tarjeta, bloquea la Fase 9). Detalle de cada fase en el [mapa de fases](SPEC.md#mapa-de-fases).
+Preguntas abiertas ([§5](SPEC.md#5-preguntas-abiertas-bloquean-la-fase-indicada)): Q6 (contrapartes reales de tarjeta, bloquea la Fase 9), Q7 (cuenta de correo de las facturas, bloquea S1) y Q8 (asignación automática de facturas, bloquea la Fase 11). Detalle de cada fase en el [mapa de fases](SPEC.md#mapa-de-fases).
 
 ## Requisitos
 
@@ -113,6 +115,7 @@ gastario/
 │   └── TransitionReport/    # Fase 7: compara el export con los CSVs viejos (Mac y Linux)
 ├── docs/
 │   ├── shortcuts.md         # cómo configurar los atajos de captura
+│   ├── spikes/              # bitácoras de spikes (S1: correos de factura)
 │   └── marca/               # ícono y lockup en SVG, capas para Icon Composer
 ├── scripts/verify.sh
 ├── .github/workflows/ci.yml # jobs linux y macos

@@ -33,7 +33,7 @@ Hoy esto vive en dos automatizaciones de Shortcuts que escriben CSVs en iCloud D
 
 - Leer Wallet o Mail directamente (FinanceKit no cubre tarjetas de Panamá). La captura sigue en Shortcuts.
 - **Share Extension** para adjuntar desde Mail/Files → v1.1. El App Group de v1 la deja preparada.
-- Parsear XML de factura electrónica o conciliarla automáticamente con un movimiento.
+- Parsear XML de factura electrónica o conciliarla automáticamente con un movimiento → candidato v1.1, ver [v1.1 — Facturas por correo](#v11--facturas-por-correo-candidato).
 - Importar CSVs viejos → v1.1, después de validar que la captura nueva no pierde nada.
 - Categorías fijas → v2, ver [v2 — Clasificación](#v2--clasificación).
 - Sincronización iCloud/CloudKit, widgets, presupuestos, multi-moneda (todo es USD).
@@ -214,6 +214,38 @@ End Repeat
 - Una fila por movimiento, montos con signo.
 - Columnas: `occurredAt`, `capturedAt`, `source`, `direction`, `amount`, `counterparty`, `cardName`, `yappyMessage`, `confirmation`, `city`, `latitude`, `longitude`, `note`, `parseStatus`, `attachmentCount`.
 - Los archivos adjuntos **no** se exportan.
+
+## v1.1 — Facturas por correo (candidato)
+
+Con la factura electrónica, muchos comercios de Panamá envían la factura por correo después de la compra. Gastario debería **atrapar esos correos y asignar la factura al movimiento** sin que yo la busque y la adjunte a mano. Hoy el adjunto de factura es manual (escanear el QR o importar el PDF) y casi nunca lo voy a hacer en el momento.
+
+Ya está la mitad del camino:
+- El atajo de Yappy corre con **cada** correo que llega, sin filtro de remitente (ver [Restricciones](#restricciones)). Atrapar facturas es agregar una rama a ese `If`, no un trigger nuevo.
+- Ya se vio en el dispositivo un recibo de comercio llegando junto con un Yappy: hoy el `If` lo descarta.
+- El adjunto `link` con la URL de consulta de la DGI ya existe (AC-20), igual que la conversión de HTML a texto del parser de Yappy.
+
+### Principios
+
+- **La factura es su propia captura**, con su propio intent. Los intents de tarjeta y Yappy no cambian (principio 4): la asignación corre del lado de la factura.
+- **Nunca perder una factura (1).** Una factura que no parsea o no calza con ningún movimiento queda en una bandeja "Facturas sin asignar"; nunca se descarta.
+- **Captura primero (2).** Se guarda el cuerpo crudo antes de parsear. Parseo y asignación son re-ejecutables.
+- **Lo que asigno a mano no lo pisa el matcher (3).** Confirmar, desasignar o descartar una factura la bloquea.
+- **Un correo que no es factura no se guarda.** El atajo le pasa a Gastario cada correo que no es de Yappy; Gastario decide en Swift si es factura (no en Atajos, por la misma razón que el parseo de Yappy vive en Swift). Si no lo es, se descarta sin guardar el cuerpo. Mis correos personales no terminan en el store.
+
+### Resultado esperado
+
+1. Llega un correo de factura → se guarda como factura con su cuerpo crudo.
+2. Si hay **un solo** movimiento de salida (tarjeta, Yappy o manual) que calza por monto exacto y ventana de tiempo → se asigna solo.
+3. Si hay varios candidatos o ninguno exacto (propina, pago dividido) → queda como sugerencia y la confirmo con un toque.
+4. En el detalle del movimiento veo la factura y abro el link de la DGI dentro de la app, como cualquier link adjunto.
+
+### Lo que no sabemos (spike S1 en `SPEC.md`)
+
+- Qué remitentes envían facturas (comercio, PAC o ambos) y si el asunto o el remitente bastan para reconocerlas.
+- Si `Content` trae CUFE, total, RUC, fecha y link de la DGI, o si eso vive solo en el PDF (CAFE) o el XML adjunto, y si Atajos expone los adjuntos del `Email`.
+- Si el total de la factura coincide con lo cobrado (propina, pago dividido) y cuánto tarda el correo en llegar.
+- Si el nombre del emisor se parece al `counterparty` de Wallet. Probablemente no: la asignación va por monto y hora.
+- Cuánto cuesta (batería, tiempo) que el intent corra con cada correo que no es de Yappy.
 
 ## v2 — Clasificación
 
