@@ -66,11 +66,13 @@ public enum YappyEmailParser {
 
     // MARK: - Reglas
 
+    /// Desde octubre de 2026 Yappy escribe "Enviaste con Yappy" en vez de "Enviaste por Yappy";
+    /// se aceptan ambas preposiciones en los correos de persona a persona.
     private static func detectKind(in lines: [String]) -> (kind: YappyKind, index: Int)? {
         for (index, line) in lines.enumerated() {
-            if line.hasPrefix("Enviaste por Yappy") { return (.sent, index) }
-            if line.hasPrefix("Te enviaron por Yappy") { return (.received, index) }
-            if line.hasPrefix("Pagaste por Yappy") { return (.paid, index) }
+            if line.starts(with: /Enviaste (por|con) Yappy/) { return (.sent, index) }
+            if line.starts(with: /Te enviaron (por|con) Yappy/) { return (.received, index) }
+            if line.starts(with: /Pagaste (por|con) Yappy/) { return (.paid, index) }
             if line.contains("ha recibido un pago por Yappy") { return (.commercialReceived, index) }
             if line.hasPrefix("Recibiste una compra en línea por Yappy") {
                 return (.commercialOnlinePurchase, index)

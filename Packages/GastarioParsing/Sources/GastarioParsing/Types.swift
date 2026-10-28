@@ -57,11 +57,11 @@ public struct ParsedCard: Sendable, Equatable {
 
 /// Tipo de correo de Yappy reconocido.
 public enum YappyKind: String, Sendable, CaseIterable {
-    /// "Enviaste por Yappy".
+    /// "Enviaste por Yappy" o "Enviaste con Yappy".
     case sent
-    /// "Te enviaron por Yappy".
+    /// "Te enviaron por Yappy" o "Te enviaron con Yappy".
     case received
-    /// "Pagaste por Yappy" (pago a un comercio).
+    /// "Pagaste por Yappy" o "Pagaste con Yappy" (pago a un comercio).
     case paid
     /// Yappy Comercial: "<negocio> ha recibido un pago por Yappy".
     case commercialReceived

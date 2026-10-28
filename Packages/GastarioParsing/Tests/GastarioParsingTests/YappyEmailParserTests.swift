@@ -55,6 +55,27 @@ struct YappyEmailParserTests {
         #expect(parsed.status == .ok)
     }
 
+    /// Formato de octubre de 2026: "Enviaste con Yappy" en vez de "por".
+    @Test func enviadoConYappy() throws {
+        let parsed = YappyEmailParser.parse(try Fixture.yappy("sent-con-yappy.txt"))
+        #expect(parsed.kind == .sent)
+        #expect(parsed.amount == decimal("15.00"))
+        #expect(parsed.counterparty == "Marta Quintero")
+        #expect(parsed.message == "Para pagar el estudio")
+        #expect(parsed.confirmation == "QWERT-55667788")
+        #expect(parsed.occurredAt == panama("2026-10-27T19:21:00-05:00"))
+        #expect(parsed.status == .ok)
+    }
+
+    /// Todavía no hay correos reales de "Te enviaron con" ni "Pagaste con"; se asume el mismo cambio.
+    @Test("Encabezados con \"con Yappy\" SYNTHETIC", arguments: [
+        ("Te enviaron con Yappy", YappyKind.received),
+        ("Pagaste con Yappy", YappyKind.paid),
+    ])
+    func encabezadosConYappy(header: String, kind: YappyKind) {
+        #expect(YappyEmailParser.parse("\(header)\n$5.00").kind == kind)
+    }
+
     @Test func pagoAComercio() throws {
         let parsed = YappyEmailParser.parse(try Fixture.yappy("paid-merchant.txt"))
         #expect(parsed.kind == .paid)
