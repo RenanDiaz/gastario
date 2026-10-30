@@ -2,7 +2,7 @@ import GastarioCore
 import SwiftData
 import SwiftUI
 
-/// Ajustes: re-parseo (Fase 4) y respaldo (Fase 5).
+/// Ajustes: re-parseo (Fase 4), respaldo (Fase 5) y bitácora de captura (Fase 7a).
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
@@ -64,6 +64,8 @@ struct SettingsView: View {
                 } footer: {
                     Text("Cada 7 días se guarda el CSV completo en iCloud Drive → Gastario, al capturar un movimiento o al abrir la app. Los adjuntos no se exportan.")
                 }
+
+                CaptureLogSection()
             }
             .onAppear(perform: loadBackupState)
             .navigationTitle("Ajustes")

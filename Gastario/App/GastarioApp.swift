@@ -17,6 +17,8 @@ struct GastarioApp: App {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 Task { await SharedModelContainer.backup.runIfDue() }
+                // Retención de la bitácora de captura (Fase 7a).
+                SharedCaptureLog.log.prune()
             }
         }
     }

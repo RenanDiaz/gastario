@@ -31,7 +31,7 @@ Huecos encontrados al convertir el intent en fases. Cada uno tiene una decisión
 | C14 | **Confirmado e incorporado a `INTENT.md`.** Abrir un link adjunto con `Link` lo manda a Safari: cada factura deja una pestaña abierta. | Los links adjuntos abren dentro de la app con `SFSafariViewController`, presentado a pantalla completa. El link a Maps del detalle no cambia. | 6 |
 | C15 | **Confirmado e incorporado a `INTENT.md`.** `INTENT.md` no decía qué pasa al tocar la notificación (no "Responder"): el delegate la ignoraba. | Tocar la notificación abre el detalle del movimiento y el editor con el cursor en la nota. El delegate deja el ID en `NotificationRouter`; la lista navega (cerrando lo que esté abierto) y el detalle abre el editor. | 3 |
 | C16 | **Confirmado e incorporado a `INTENT.md`.** `INTENT.md` dejaba las categorías para v2, "derivadas de ~2 meses de notas". Ya existe la fuente real: los topes del presupuesto. Y clasificar solo por categoría no distingue pasamanos, préstamos ni reembolsos. | Sección [v2 — Clasificación](INTENT.md#v2--clasificación): `kind` (8 tipos) aparte de la categoría, reglas por comercio con sugerencia en la notificación y división en partes. Fases 8–10. | 8–10 |
-| C17 | En la Fase 7 aparecieron pagos que el atajo le pasó a Gastario (la fila está en el CSV viejo) y que no están en el store. `INTENT.md` no pide ningún rastro fuera de SwiftData, así que no hay forma de saber si el intent no corrió, si murió antes de guardar o si el movimiento se borró después. | Bitácora de captura: un archivo JSON Lines en el App Group, escrito sin SwiftData, con una línea por paso de cada invocación de los intents y por cada borrado desde la UI. Se ve y se comparte desde Ajustes. Detalle en la [Fase 7a](#fase-7a--bitácora-de-captura). | 7a |
+| C17 | **Confirmado e incorporado a `INTENT.md`.** En la Fase 7 aparecieron pagos que el atajo le pasó a Gastario (la fila está en el CSV viejo) y que no están en el store. `INTENT.md` no pide ningún rastro fuera de SwiftData, así que no hay forma de saber si el intent no corrió, si murió antes de guardar o si el movimiento se borró después. | Bitácora de captura: un archivo JSON Lines en el App Group, escrito sin SwiftData, con una línea por paso de cada invocación de los intents y por cada borrado desde la UI. Se ve y se comparte desde Ajustes. Detalle en la [Fase 7a](#fase-7a--bitácora-de-captura). | 7a |
 | C11 | Un pago de la cuenta personal al propio negocio llega dos veces con la misma `confirmation`; deduplicar solo por `confirmation` pierde uno. | **Confirmado e incorporado a `INTENT.md`.** Clave de deduplicación = `confirmation` + `direction`. | 2 |
 
 ## 3. Arquitectura y convenciones (aplican a todas las fases)
@@ -350,7 +350,10 @@ Los cuerpos deben ser **reales**, copiados desde Mail (seleccionar todo el cuerp
    - Un pago rechazado (b) aparece en los dos lados, porque el CSV viejo y Gastario corren en el mismo atajo: no sale como discrepancia. Se busca a mano contra el estado de cuenta.
    - Un Yappy que el atajo nunca vio (como el que se perdió por el filtro del trigger, ver [`docs/shortcuts.md`](docs/shortcuts.md#yappy-correo)) falta **en los dos lados** y la comparación no lo detecta. Por eso, además: buscar en Mail los correos de `notificaciones@yappy.com.pa` del período y comparar su cantidad con las filas de Yappy en Gastario. Si falta en los dos, cuenta como (c).
 4. Cualquier (c) bloquea el retiro: se investiga con la [bitácora de captura](#fase-7a--bitácora-de-captura), se corrige, y se extiende el período una semana.
-   - **Primera comparación (28/10, desde el 16/10):** 13 de 15 pagos con tarjeta coinciden. Faltan en Gastario el del 18/10 15:40 (Wallet entregó comercio, monto y tarjeta vacíos) y el del 22/10 18:02 (M/S Betty, $3.10), los dos presentes en el CSV viejo: (c) probables, salvo que se hayan borrado a mano. Antes de la bitácora no hay forma de distinguirlo, por eso existe la Fase 7a. Además, un pago del 25/10 (Rey David, $18.78) falta en los dos lados y se registró a mano: el atajo no corrió.
+   - **Primera comparación (28/10, desde el 16/10):** 13 de 15 pagos con tarjeta coinciden. Faltan en Gastario dos que el CSV viejo sí tiene, ninguno borrado a mano: (c).
+     - 22/10 18:02, M/S Betty, $3.10. Causa probable: el perfil de firma de la cuenta gratis vence a los 7 días y la app deja de abrir, también para el intent. El atajo escribe el Append y falla en Gastario. Mientras se firme con cuenta gratis, hay que reinstalar antes del vencimiento; en la bitácora este caso se ve como "ningún `received`".
+     - 18/10 15:40, con comercio, monto y tarjeta vacíos. Sin explicar: es el caso para el que existe la Fase 7a.
+     - Además, el 25/10 (Rey David, $18.78, pagado con el iPhone) falta en los dos lados y se registró a mano: el atajo no corrió o se detuvo antes del Append. La bitácora no lo ve. Sospechosa: `Current Location`, la primera acción del atajo, que lo detiene si falla.
 5. Con cero (c): quitar el `Append to Text File` de ambos atajos. Archivar los CSVs viejos como insumo para la importación de v1.1.
 
 **Gate de salida.**
@@ -408,7 +411,7 @@ Un `pid` distinto entre dos eventos de la misma invocación no debería pasar. S
 - Que `Tools/TransitionReport` lea la bitácora. Se agrega si cruzarla a mano resulta lento.
 
 **Entregables.**
-- `Packages/GastarioCore/Sources/GastarioCore/Diagnostics/{CaptureLog,CaptureLogEvent,CaptureLogReader,CaptureObserver}.swift`
+- `Packages/GastarioCore/Sources/GastarioCore/Diagnostics/{CaptureLog,CaptureLogEvent,CaptureLogEvent+Movement,CaptureLogReader,CaptureObserver}.swift`
 - `CaptureService`: parámetro `observer` en `init` y las dos llamadas. Nada más cambia.
 - `LogCardMovementIntent` y `LogYappyEmailIntent`: `received`, `error` y `done`, y el observador.
 - `MovementListView.delete` y `DebugMenu`: `deleted`.

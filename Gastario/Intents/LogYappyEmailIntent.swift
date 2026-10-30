@@ -1,4 +1,5 @@
 import AppIntents
+import CryptoKit
 import GastarioCore
 import OSLog
 
@@ -15,11 +16,25 @@ struct LogYappyEmailIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult {
-        // Diagnóstico: un Content incompleto (sin cuerpo) produce un movimiento sin confirmación.
-        Logger.app.info("Yappy: Content con \(content?.count ?? 0) caracteres")
-        // Solo lanza si el store no responde: un fallo de parseo se guarda igual (principio 1).
-        let outcome = try await SharedModelContainer.captureService().captureYappy(content: content ?? "")
-        Logger.app.info("Yappy capturado: \(String(describing: outcome), privacy: .public)")
+        let body = content ?? ""
+        // Bitácora (Fase 7a): lo primero, antes de tocar el store. Solo largo y hash: el correo
+        // sigue en Mail. Un Content incompleto (sin cuerpo) se ve en el largo.
+        let log = SharedCaptureLog.log
+        let invocation = UUID()
+        let hash = SHA256.hash(data: Data(body.utf8)).map { String(format: "%02x", $0) }.joined()
+        log.record(.receivedYappy(invocation, contentLength: body.count, contentSHA256: hash))
+
+        do {
+            // Solo lanza si el store no responde: un fallo de parseo se guarda igual (principio 1).
+            let outcome = try await SharedModelContainer
+                .captureService(observer: CaptureLogObserver(log: log, invocation: invocation))
+                .captureYappy(content: body)
+            Logger.app.info("Yappy capturado: \(String(describing: outcome), privacy: .public)")
+        } catch {
+            log.record(.error(invocation, error))
+            throw error
+        }
+        log.record(.done(invocation))
         return .result()
     }
 }

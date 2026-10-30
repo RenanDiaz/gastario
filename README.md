@@ -20,15 +20,15 @@ App iOS que registra cada pago con Apple Pay y cada Yappy, y permite anotar en q
 | 4. Revisión y edición | Implementada. Fixtures comparados con un cuerpo crudo real. 📱 Verificado: borrar. Falta: AC-9, AC-13, AC-14, AC-18 |
 | 5. Exportar y respaldo (iCloud Drive) | Implementada. 📱 Verificado: AC-11 ("Exportar ahora" abre en Numbers). Falta: AC-21 (auto-export, requiere cuenta pagada) y export fallido |
 | 6. Adjuntos (foto, PDF, link, QR de factura) | Implementada. 📱 Verificado: QR, PDF, foto y borrar un adjunto. Falta: AC-19 (PDF de 5 MB tras reabrir), AC-15 completo y captura durante el flujo de adjuntar |
-| 7. Transición | En curso: período en paralelo. Herramienta de comparación lista ([cómo usarla](#transición-fase-7)). Primera comparación (28/10): faltan en Gastario 2 pagos con tarjeta que el CSV viejo sí tiene. No se puede cerrar hasta investigarlos con la Fase 7a |
-| 7a. Bitácora de captura | Especificada ([`SPEC.md`](SPEC.md#fase-7a--bitácora-de-captura)). Sigue ahora: bloquea el cierre de la Fase 7 |
+| 7. Transición | En curso: período en paralelo. Herramienta de comparación lista ([cómo usarla](#transición-fase-7)). Primera comparación (28/10): faltan en Gastario 2 pagos con tarjeta que el CSV viejo sí tiene ([detalle](SPEC.md#fase-7--transición-operativa)). No se puede cerrar hasta investigarlos con la Fase 7a |
+| 7a. Bitácora de captura ([`SPEC.md`](SPEC.md#fase-7a--bitácora-de-captura)) | Implementada; falta verificarla en el iPhone. Bloquea el cierre de la Fase 7 |
 | 8. Tipo y categoría (v2) | Especificada ([`SPEC.md`](SPEC.md#fase-8--tipo-y-categoría)). Sigue después de la Fase 7 o en paralelo |
 | 9. Reglas y sugerencias (v2) | Especificada. Bloqueada por Q6 |
 | 10. Dividir movimientos (v2) | Especificada |
 | S1. Spike: correos de factura | Listo para arrancar: atajo de censo en [`docs/shortcuts.md`](docs/shortcuts.md#diagnóstico-de-facturas-spike-s1-temporal), bitácora en [`docs/spikes/invoice-emails.md`](docs/spikes/invoice-emails.md). En paralelo con la Fase 7 |
 | 11. Facturas por correo (v1.1) | Especificada, sujeta al resultado de S1 |
 
-Preguntas abiertas ([§5](SPEC.md#5-preguntas-abiertas-bloquean-la-fase-indicada)): Q6 (contrapartes reales de tarjeta, bloquea la Fase 9), Q7 (cuenta de correo de las facturas, bloquea S1) y Q8 (asignación automática de facturas, bloquea la Fase 11). Cambio propuesto pendiente de confirmar ([§2](SPEC.md#2-cambios-propuestos-a-intentmd)): C17 (bitácora de captura). Detalle de cada fase en el [mapa de fases](SPEC.md#mapa-de-fases).
+Preguntas abiertas ([§5](SPEC.md#5-preguntas-abiertas-bloquean-la-fase-indicada)): Q6 (contrapartes reales de tarjeta, bloquea la Fase 9), Q7 (cuenta de correo de las facturas, bloquea S1) y Q8 (asignación automática de facturas, bloquea la Fase 11). Detalle de cada fase en el [mapa de fases](SPEC.md#mapa-de-fases).
 
 ## Requisitos
 
@@ -107,11 +107,11 @@ gastario/
 │   ├── Movements/           # lista, detalle, edición y entrada manual
 │   ├── Export/              # respaldo semanal del CSV en iCloud Drive
 │   ├── Attachments/         # adjuntos: foto, PDF, link y QR
-│   ├── Settings/
+│   ├── Settings/            # re-parseo, respaldo y bitácora de captura
 │   └── Debug/               # menú Debug: muestras, borrar todo y notificación de prueba (C15)
 ├── Packages/
 │   ├── GastarioParsing/     # parsers puros, solo Foundation, probados también en Linux
-│   └── GastarioCore/        # SwiftData y servicios, solo plataformas Apple
+│   └── GastarioCore/        # SwiftData y servicios, solo plataformas Apple; Diagnostics/ es la bitácora de captura
 ├── Tools/
 │   └── TransitionReport/    # Fase 7: compara el export con los CSVs viejos (Mac y Linux)
 ├── docs/
