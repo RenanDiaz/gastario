@@ -2,7 +2,7 @@ import GastarioCore
 import SwiftData
 import SwiftUI
 
-/// Ajustes: re-parseo (Fase 4), respaldo (Fase 5) y bitácora de captura (Fase 7a).
+/// Ajustes: firma (Fase 7b), re-parseo (Fase 4), respaldo (Fase 5) y bitácora de captura (Fase 7a).
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
@@ -18,6 +18,8 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                SigningExpirySection()
+
                 Section {
                     Button("Re-parsear todo", systemImage: "arrow.clockwise") { reparseAll() }
                     if let reparseResult {

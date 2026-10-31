@@ -177,6 +177,7 @@ End Repeat
 - Categoría con `UNTextInputNotificationAction` ("Responder"), **sin** la opción `.foreground`. La respuesta se guarda en `note` sin abrir la app.
 - Tocar la notificación abre la app en el detalle del movimiento, con el editor abierto y el cursor en la nota.
 - El delegate se registra en un `UIApplicationDelegateAdaptor`, en `application(_:didFinishLaunchingWithOptions:)`. **No** en `.onAppear` ni en el `init` de una vista.
+- Aviso de vencimiento de la firma: una notificación local 24 h antes, "Gastario vence mañana", reprogramada cada vez que se abre la app (ver UI).
 - El `completionHandler` se llama **después** de que el save de `note` termine, y **en el hilo principal**: al tocar la notificación, UIKit lo exige y de lo contrario la app muere al abrirse.
 
 ## UI
@@ -197,7 +198,8 @@ End Repeat
     - Escanear QR con `DataScannerViewController` → se guarda como `link`.
     - Ver con `QuickLookPreview`; los links abren dentro de la app con `SFSafariViewController`, sin dejar pestañas en Safari.
 - **Resumen** del mes: total salidas, total entradas, neto.
-- **Ajustes:** "Re-parsear todo", fecha del último auto-export, "Exportar ahora" y la bitácora de captura (ver Respaldo).
+- **Ajustes:** fecha de vencimiento de la firma (ver abajo), "Re-parsear todo", fecha del último auto-export, "Exportar ahora" y la bitácora de captura (ver Respaldo).
+- **Vencimiento de la firma.** Firmada con una cuenta gratis, la app vence a los 7 días de instalarla y después no abre, ni siquiera para los intents: las capturas se pierden. Si el bundle trae `embedded.mobileprovision`, Ajustes muestra "La app vence el …", en rojo con menos de 48 h, y con menos de 48 h la lista avisa arriba del resumen. En App Store y TestFlight no se muestra nada.
 
 ## Respaldo
 

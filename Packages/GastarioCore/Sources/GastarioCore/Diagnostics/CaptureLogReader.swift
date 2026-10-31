@@ -40,13 +40,15 @@ public struct CaptureInvocation: Identifiable, Equatable, Sendable {
     public var movementID: UUID? { events.lazy.compactMap(\.movementID).first }
     public var errorMessage: String? { events.first { $0.ev == .error }?.message }
 
+    /// Sin `received` es `unknown` aunque haya pasos posteriores: la invocación no se puede leer
+    /// con la tabla de interpretación y tiene que verse como anómala.
     public var stage: CaptureStage {
+        guard received != nil else { return .unknown }
         if events.contains(where: { $0.ev == .done }) { return .done }
         if events.contains(where: { $0.ev == .error }) { return .error }
         if events.contains(where: { $0.ev == .saved }) { return .saved }
         if events.contains(where: { $0.ev == .rawSaved }) { return .rawSaved }
-        if received != nil { return .received }
-        return .unknown
+        return .received
     }
 
     public var isComplete: Bool { stage == .done }
