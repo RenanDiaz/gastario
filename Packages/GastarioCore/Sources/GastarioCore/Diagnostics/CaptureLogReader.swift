@@ -41,12 +41,13 @@ public struct CaptureInvocation: Identifiable, Equatable, Sendable {
     public var errorMessage: String? { events.first { $0.ev == .error }?.message }
 
     public var stage: CaptureStage {
+        // Sin `received` la invocación no se puede leer con la tabla, llegue hasta donde llegue.
+        guard received != nil else { return .unknown }
         if events.contains(where: { $0.ev == .done }) { return .done }
         if events.contains(where: { $0.ev == .error }) { return .error }
         if events.contains(where: { $0.ev == .saved }) { return .saved }
         if events.contains(where: { $0.ev == .rawSaved }) { return .rawSaved }
-        if received != nil { return .received }
-        return .unknown
+        return .received
     }
 
     public var isComplete: Bool { stage == .done }
