@@ -22,14 +22,14 @@ App iOS que registra cada pago con Apple Pay y cada Yappy, y permite anotar en q
 | 6. Adjuntos (foto, PDF, link, QR de factura) | Implementada. 📱 Verificado: QR, PDF, foto y borrar un adjunto. Falta: AC-19 (PDF de 5 MB tras reabrir), AC-15 completo y captura durante el flujo de adjuntar |
 | 7. Transición | En curso: período en paralelo. Herramienta de comparación lista ([cómo usarla](#transición-fase-7)). Primera comparación (28/10): faltan en Gastario 2 pagos con tarjeta que el CSV viejo sí tiene ([detalle](SPEC.md#fase-7--transición-operativa)). No se puede cerrar hasta investigarlos con la Fase 7a |
 | 7a. Bitácora de captura ([`SPEC.md`](SPEC.md#fase-7a--bitácora-de-captura)) | Implementada; falta verificarla en el iPhone. Bloquea el cierre de la Fase 7 |
-| 7b. Aviso de vencimiento de la firma ([`SPEC.md`](SPEC.md#fase-7b--aviso-de-vencimiento-de-la-firma)) | Especificada; C18 pendiente de confirmar. Con la cuenta gratis, avisa antes de que la app deje de abrir |
+| 7b. Aviso de vencimiento de la firma ([`SPEC.md`](SPEC.md#fase-7b--aviso-de-vencimiento-de-la-firma)) | Especificada (C18 confirmado). Con la cuenta gratis, avisa antes de que la app deje de abrir |
 | 8. Tipo y categoría (v2) | Especificada ([`SPEC.md`](SPEC.md#fase-8--tipo-y-categoría)). Sigue después de la Fase 7 o en paralelo |
 | 9. Reglas y sugerencias (v2) | Especificada. Bloqueada por Q6 |
 | 10. Dividir movimientos (v2) | Especificada |
 | S1. Spike: correos de factura | Listo para arrancar: atajo de censo en [`docs/shortcuts.md`](docs/shortcuts.md#diagnóstico-de-facturas-spike-s1-temporal), bitácora en [`docs/spikes/invoice-emails.md`](docs/spikes/invoice-emails.md). En paralelo con la Fase 7 |
 | 11. Facturas por correo (v1.1) | Especificada, sujeta al resultado de S1 |
 
-Cambio propuesto pendiente de confirmar: [C18](SPEC.md#2-cambios-propuestos-a-intentmd) (aviso de vencimiento de la firma, Fase 7b). Preguntas abiertas ([§5](SPEC.md#5-preguntas-abiertas-bloquean-la-fase-indicada)): Q6 (contrapartes reales de tarjeta, bloquea la Fase 9), Q7 (cuenta de correo de las facturas, bloquea S1) y Q8 (asignación automática de facturas, bloquea la Fase 11). Detalle de cada fase en el [mapa de fases](SPEC.md#mapa-de-fases).
+Preguntas abiertas ([§5](SPEC.md#5-preguntas-abiertas-bloquean-la-fase-indicada)): Q6 (contrapartes reales de tarjeta, bloquea la Fase 9), Q7 (cuenta de correo de las facturas, bloquea S1) y Q8 (asignación automática de facturas, bloquea la Fase 11). Detalle de cada fase en el [mapa de fases](SPEC.md#mapa-de-fases).
 
 ## Requisitos
 

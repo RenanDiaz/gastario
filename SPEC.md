@@ -32,7 +32,7 @@ Huecos encontrados al convertir el intent en fases. Cada uno tiene una decisión
 | C15 | **Confirmado e incorporado a `INTENT.md`.** `INTENT.md` no decía qué pasa al tocar la notificación (no "Responder"): el delegate la ignoraba. | Tocar la notificación abre el detalle del movimiento y el editor con el cursor en la nota. El delegate deja el ID en `NotificationRouter`; la lista navega (cerrando lo que esté abierto) y el detalle abre el editor. | 3 |
 | C16 | **Confirmado e incorporado a `INTENT.md`.** `INTENT.md` dejaba las categorías para v2, "derivadas de ~2 meses de notas". Ya existe la fuente real: los topes del presupuesto. Y clasificar solo por categoría no distingue pasamanos, préstamos ni reembolsos. | Sección [v2 — Clasificación](INTENT.md#v2--clasificación): `kind` (8 tipos) aparte de la categoría, reglas por comercio con sugerencia en la notificación y división en partes. Fases 8–10. | 8–10 |
 | C17 | **Confirmado e incorporado a `INTENT.md`.** En la Fase 7 aparecieron pagos que el atajo le pasó a Gastario (la fila está en el CSV viejo) y que no están en el store. `INTENT.md` no pide ningún rastro fuera de SwiftData, así que no hay forma de saber si el intent no corrió, si murió antes de guardar o si el movimiento se borró después. | Bitácora de captura: un archivo JSON Lines en el App Group, escrito sin SwiftData, con una línea por paso de cada invocación de los intents y por cada borrado desde la UI. Se ve y se comparte desde Ajustes. Detalle en la [Fase 7a](#fase-7a--bitácora-de-captura). | 7a |
-| C18 | **Propuesto, pendiente de confirmar.** Con la cuenta gratis (Personal Team) el perfil de aprovisionamiento vence a los 7 días. Vencido, iOS no abre la app ni para correr los intents: el atajo de tarjeta escribe el Append del CSV viejo y falla al llamar a Gastario. Así se perdió M/S Betty el 22/10 ([Fase 7](#fase-7--transición-operativa)). `INTENT.md` no prevé ningún aviso, y la bitácora (C17) no lo ve porque el proceso ni arranca. Viola el principio 1 sin dejar rastro. | Leer `ExpirationDate` de `embedded.mobileprovision` dentro del bundle. Ajustes muestra "La app vence el …", en rojo con menos de 48 h. Notificación local 24 h antes, reprogramada cada vez que se abre la app. Sin ese archivo (App Store, TestFlight, simulador) no se muestra ni se programa nada. Detalle en la [Fase 7b](#fase-7b--aviso-de-vencimiento-de-la-firma). | 7b |
+| C18 | **Confirmado e incorporado a `INTENT.md`.** Con la cuenta gratis (Personal Team) el perfil de aprovisionamiento vence a los 7 días. Vencido, iOS no abre la app ni para correr los intents: el atajo de tarjeta escribe el Append del CSV viejo y falla al llamar a Gastario. Así se perdió M/S Betty el 22/10 ([Fase 7](#fase-7--transición-operativa)). `INTENT.md` no prevé ningún aviso, y la bitácora (C17) no lo ve porque el proceso ni arranca. Viola el principio 1 sin dejar rastro. | Leer `ExpirationDate` de `embedded.mobileprovision` dentro del bundle. Ajustes muestra "La app vence el …", en rojo con menos de 48 h, y con menos de 48 h la lista también muestra un aviso arriba. Notificación local 24 h antes, reprogramada cada vez que se abre la app. Sin ese archivo (App Store, TestFlight, simulador) no se muestra ni se programa nada. Detalle en la [Fase 7b](#fase-7b--aviso-de-vencimiento-de-la-firma). | 7b |
 | C11 | Un pago de la cuenta personal al propio negocio llega dos veces con la misma `confirmation`; deduplicar solo por `confirmation` pierde uno. | **Confirmado e incorporado a `INTENT.md`.** Clave de deduplicación = `confirmation` + `direction`. | 2 |
 
 ## 3. Arquitectura y convenciones (aplican a todas las fases)
@@ -86,7 +86,7 @@ Por qué dos paquetes y no uno: un agente que corre en la nube (Linux) puede des
 | 6 | Adjuntos | Foto, PDF, link y QR por movimiento | 15, 19, 20 | 4 |
 | 7 | Transición | Shortcuts viejos retirados con evidencia | — | 3 + 2–3 semanas |
 | 7a | Bitácora de captura | Una captura perdida dice en qué paso murió o si se borró | — | 2 |
-| 7b | Aviso de vencimiento de la firma | Ajustes dice cuándo vence la app y llega una notificación 24 h antes | — | 3 |
+| 7b | Aviso de vencimiento de la firma | Ajustes dice cuándo vence la app; con menos de 48 h la lista avisa, y llega una notificación 24 h antes | — | 3 |
 | 8 | Tipo y categoría (v2) | Clasifico a mano; resumen y CSV respetan el `kind` | 22, 23, 24, 25, 31 (parcial) | 4, 5 |
 | 9 | Reglas y sugerencias (v2) | La segunda compra en un comercio se clasifica con un toque desde la notificación | 26, 27, 28 | 3, 8 |
 | 10 | Dividir movimientos (v2) | Un movimiento repartido en partes con su propia clasificación | 25, 29, 30, 31 | 8 |
@@ -453,28 +453,26 @@ Un `pid` distinto entre dos eventos de la misma invocación no debería pasar. S
   - `reminderDate(now:)`: `expiresAt − 24 h` si todavía está en el futuro; si no, `nil`.
   - Textos en `America/Panama` y `es_PA`: Ajustes, "La app vence el {fecha y hora}". Notificación, título "Gastario vence mañana" y cuerpo "La firma vence el {fecha y hora}. Reinstálala desde Xcode para no perder capturas."
 - **Ajustes → "Firma".** Es la primera sección, porque es la única que avisa de una pérdida futura. Muestra "La app vence el …", en rojo si `isUrgent`. Pie: "Con una cuenta gratis la app vence 7 días después de instalarla desde Xcode. Vencida no abre, y los atajos no pueden guardar capturas." Sin perfil, la sección no aparece.
+- **Aviso en la lista.** Con `isUrgent`, la lista muestra arriba del resumen del mes una fila en rojo: "La app vence el …" y, debajo, "Reinstálala desde Xcode para no perder capturas." Tocarla abre Ajustes. Ajustes solo se ve si se abre; la lista se ve siempre.
 - **Notificación.** Identificador fijo `signing-expiry`, sin categoría (no lleva "Responder"). Cada vez que la app pasa a `active` se borra la pendiente con ese identificador y, si `reminderDate` no es `nil`, se programa otra con `UNTimeIntervalNotificationTrigger`. Al tocarla, la app abre sin más: el delegate ya ignora identificadores que no son UUID.
-- **Debug.** En builds `DEBUG`, el botón "Simular vencimiento mañana" muestra la sección con una fecha de vencimiento 24 h adelante (en rojo) y programa la notificación con ese texto para 10 s después. Así se verifica sin esperar 6 días.
+- **Debug.** En builds `DEBUG`, el botón "Simular vencimiento mañana" muestra la sección y el aviso de la lista con una fecha de vencimiento 24 h adelante (en rojo) y programa la notificación con ese texto para 10 s después. Así se verifica sin esperar 6 días.
 
 **Casos límite** (decisiones por defecto).
-- Al abrir faltan menos de 24 h: ya pasó la hora del aviso y no se programa. Ajustes está en rojo.
+- Al abrir faltan menos de 24 h: ya pasó la hora del aviso y no se programa. La lista y Ajustes están en rojo.
 - Se reinstala desde Xcode y no se abre la app: la notificación anterior sigue programada y llega con la fecha vieja. Se corrige la próxima vez que se abre la app. Se acepta.
 - Sin permiso de notificaciones: solo queda Ajustes.
 
 **Fuera de alcance.**
 - Renovar o reinstalar sin Xcode.
-- Un aviso en la lista principal. Se agrega si la notificación no basta en la práctica.
 - Reprogramar desde los intents: los intents no deben hacer nada que no sea capturar.
 - Registrar el vencimiento en la bitácora.
 
-**Al confirmarse C18**, `INTENT.md` agrega en **Ajustes** la fecha de vencimiento de la firma y, en **Notificaciones**, el aviso 24 h antes.
-
 **Entregables.**
 - `Packages/GastarioCore/Sources/GastarioCore/Signing/{ProvisioningProfile,SigningExpiry}.swift`
-- `Gastario/Settings/SigningExpirySection.swift`: la sección de Ajustes y el botón de Debug.
+- `Gastario/Settings/SigningExpirySection.swift`: la sección de Ajustes, el botón de Debug y el aviso de la lista.
 - `Gastario/Notifications/SigningExpiryReminder.swift`: leer el perfil del bundle y (re)programar la notificación.
 - `GastarioApp`: reprogramar al pasar a `active`.
-- `SettingsView`: la sección.
+- `SettingsView`: la sección. `MovementListView`: el aviso.
 
 **Pruebas automáticas** (`GastarioCore`, macOS).
 - Perfil sintético (bytes binarios, el plist y más bytes binarios) → la fecha exacta de `ExpirationDate`.
@@ -486,7 +484,7 @@ Un `pid` distinto entre dos eventos de la misma invocación no debería pasar. S
 **Gate de salida.**
 - [ ] `scripts/verify.sh` verde en el job `macos`.
 - [ ] 📱 Instalar desde Xcode con la cuenta gratis → Ajustes muestra "La app vence el …" con la misma fecha que el perfil en Xcode (Signing & Capabilities, ⓘ del perfil).
-- [ ] 📱 "Simular vencimiento mañana" (Debug) → la sección en rojo, y 10 s después llega la notificación, también con la app en segundo plano.
+- [ ] 📱 "Simular vencimiento mañana" (Debug) → la sección y el aviso de la lista en rojo; tocar el aviso abre Ajustes; y 10 s después llega la notificación, también con la app en segundo plano.
 - [ ] 📱 En el ciclo real siguiente, la notificación llega 24 h antes del vencimiento.
 
 ---
