@@ -18,6 +18,8 @@ struct MovementListView: View {
     var body: some View {
         NavigationStack(path: $path) {
             List {
+                // Fase 7b (C18): con menos de 48 h para que venza la firma.
+                SigningExpiryBanner { showingSettings = true }
                 Section {
                     MonthlySummaryView(movements: movements)
                 }

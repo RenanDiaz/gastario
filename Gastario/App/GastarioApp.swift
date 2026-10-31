@@ -19,6 +19,8 @@ struct GastarioApp: App {
                 Task { await SharedModelContainer.backup.runIfDue() }
                 // Retención de la bitácora de captura (Fase 7a).
                 SharedCaptureLog.log.prune()
+                // Aviso de vencimiento de la firma (Fase 7b): con la fecha del perfil instalado ahora.
+                Task { await SigningExpiryReminder.shared.reschedule() }
             }
         }
     }

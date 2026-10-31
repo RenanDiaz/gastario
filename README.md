@@ -22,7 +22,7 @@ App iOS que registra cada pago con Apple Pay y cada Yappy, y permite anotar en q
 | 6. Adjuntos (foto, PDF, link, QR de factura) | Implementada. 📱 Verificado: QR, PDF, foto y borrar un adjunto. Falta: AC-19 (PDF de 5 MB tras reabrir), AC-15 completo y captura durante el flujo de adjuntar |
 | 7. Transición | En curso: período en paralelo. Herramienta de comparación lista ([cómo usarla](#transición-fase-7)). Primera comparación (28/10): faltan en Gastario 2 pagos con tarjeta que el CSV viejo sí tiene ([detalle](SPEC.md#fase-7--transición-operativa)). No se puede cerrar hasta investigarlos con la Fase 7a |
 | 7a. Bitácora de captura ([`SPEC.md`](SPEC.md#fase-7a--bitácora-de-captura)) | Implementada; falta verificarla en el iPhone. Bloquea el cierre de la Fase 7 |
-| 7b. Aviso de vencimiento de la firma ([`SPEC.md`](SPEC.md#fase-7b--aviso-de-vencimiento-de-la-firma)) | Especificada (C18 confirmado). Con la cuenta gratis, avisa antes de que la app deje de abrir |
+| 7b. Aviso de vencimiento de la firma ([`SPEC.md`](SPEC.md#fase-7b--aviso-de-vencimiento-de-la-firma)) | Implementada (C18). Con la cuenta gratis, Ajustes dice cuándo vence la app, la lista avisa con menos de 48 h y llega una notificación 24 h antes. Falta verificarla en el iPhone |
 | 8. Tipo y categoría (v2) | Especificada ([`SPEC.md`](SPEC.md#fase-8--tipo-y-categoría)). Sigue después de la Fase 7 o en paralelo |
 | 9. Reglas y sugerencias (v2) | Especificada. Bloqueada por Q6 |
 | 10. Dividir movimientos (v2) | Especificada |
@@ -37,7 +37,7 @@ Preguntas abiertas ([§5](SPEC.md#5-preguntas-abiertas-bloquean-la-fase-indicada
 |---|---|
 | Mac de build | Xcode 26 o posterior (Swift 6) |
 | App | iOS 26+ (iPhone); deployment target en [`SPEC.md` §2, C12](SPEC.md#2-cambios-propuestos-a-intentmd) |
-| Cuenta de Apple | Developer pagada: iCloud Documents no está disponible con una cuenta gratis, y la firma gratis vence a los 7 días |
+| Cuenta de Apple | Developer pagada: iCloud Documents no está disponible con una cuenta gratis, y la firma gratis vence a los 7 días. Con cuenta gratis, reinstala antes de la fecha que muestra Ajustes → Firma ([Fase 7b](SPEC.md#fase-7b--aviso-de-vencimiento-de-la-firma)): vencida, la app no abre y los atajos pierden capturas |
 | Herramientas | [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`) |
 
 ## Primeros pasos
@@ -104,15 +104,15 @@ gastario/
 │   ├── Assets.xcassets/     # ícono de la app (clara, oscura, tintada)
 │   ├── App/                 # arranque, AppDelegate, contenedor SwiftData en el App Group
 │   ├── Intents/             # App Intents de captura (tarjeta y Yappy)
-│   ├── Notifications/       # notificaciones con respuesta
+│   ├── Notifications/       # notificaciones con respuesta y aviso de vencimiento de la firma
 │   ├── Movements/           # lista, detalle, edición y entrada manual
 │   ├── Export/              # respaldo semanal del CSV en iCloud Drive
 │   ├── Attachments/         # adjuntos: foto, PDF, link y QR
-│   ├── Settings/            # re-parseo, respaldo y bitácora de captura
+│   ├── Settings/            # firma, re-parseo, respaldo y bitácora de captura
 │   └── Debug/               # menú Debug: muestras, borrar todo y notificación de prueba (C15)
 ├── Packages/
 │   ├── GastarioParsing/     # parsers puros, solo Foundation, probados también en Linux
-│   └── GastarioCore/        # SwiftData y servicios, solo plataformas Apple; Diagnostics/ es la bitácora de captura
+│   └── GastarioCore/        # SwiftData y servicios, solo plataformas Apple; Diagnostics/ es la bitácora de captura; Signing/, el vencimiento de la firma
 ├── Tools/
 │   └── TransitionReport/    # Fase 7: compara el export con los CSVs viejos (Mac y Linux)
 ├── docs/

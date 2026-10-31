@@ -451,11 +451,11 @@ Un `pid` distinto entre dos eventos de la misma invocación no debería pasar. S
 - **Decisión.** `SigningExpiry(expiresAt:)`:
   - `isUrgent(now:)`: faltan **menos de 48 h** (incluye ya vencida, aunque en ese caso la app no abre).
   - `reminderDate(now:)`: `expiresAt − 24 h` si todavía está en el futuro; si no, `nil`.
-  - Textos en `America/Panama` y `es_PA`: Ajustes, "La app vence el {fecha y hora}". Notificación, título "Gastario vence mañana" y cuerpo "La firma vence el {fecha y hora}. Reinstálala desde Xcode para no perder capturas."
+  - Textos en `America/Panama` y `es_PA`: Ajustes, "La app vence el {fecha y hora}". Notificación, título "Gastario vence mañana" y cuerpo "Vence el {fecha y hora}: reinstálala desde Xcode para no perder capturas."
 - **Ajustes → "Firma".** Es la primera sección, porque es la única que avisa de una pérdida futura. Muestra "La app vence el …", en rojo si `isUrgent`. Pie: "Con una cuenta gratis la app vence 7 días después de instalarla desde Xcode. Vencida no abre, y los atajos no pueden guardar capturas." Sin perfil, la sección no aparece.
 - **Aviso en la lista.** Con `isUrgent`, la lista muestra arriba del resumen del mes una fila en rojo: "La app vence el …" y, debajo, "Reinstálala desde Xcode para no perder capturas." Tocarla abre Ajustes. Ajustes solo se ve si se abre; la lista se ve siempre.
 - **Notificación.** Identificador fijo `signing-expiry`, sin categoría (no lleva "Responder"). Cada vez que la app pasa a `active` se borra la pendiente con ese identificador y, si `reminderDate` no es `nil`, se programa otra con `UNTimeIntervalNotificationTrigger`. Al tocarla, la app abre sin más: el delegate ya ignora identificadores que no son UUID.
-- **Debug.** En builds `DEBUG`, el botón "Simular vencimiento mañana" muestra la sección y el aviso de la lista con una fecha de vencimiento 24 h adelante (en rojo) y programa la notificación con ese texto para 10 s después. Así se verifica sin esperar 6 días.
+- **Debug.** En builds `DEBUG`, el botón "Simular vencimiento mañana" muestra la sección y el aviso de la lista con una fecha de vencimiento 24 h adelante (en rojo) y programa la notificación con ese texto para 10 s después, con otro identificador para que volver a la app no la borre. La simulación dura hasta que se cierra el proceso. Así se verifica sin esperar 6 días.
 
 **Casos límite** (decisiones por defecto).
 - Al abrir faltan menos de 24 h: ya pasó la hora del aviso y no se programa. La lista y Ajustes están en rojo.
