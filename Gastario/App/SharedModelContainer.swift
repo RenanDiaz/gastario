@@ -21,7 +21,10 @@ enum SharedModelContainer {
     static let backup = BackupService(container: container, state: BackupState(defaults: defaults))
 
     /// El pipeline de captura de los intents: notificaciones (Fase 3) y auto-export (Fase 5).
-    static func captureService() -> CaptureService {
-        CaptureService(container: container, notifier: NotificationService(container: container), backup: backup)
+    /// `observer` escribe los pasos en la bitácora de captura (Fase 7a).
+    static func captureService(observer: any CaptureObserver) -> CaptureService {
+        CaptureService(
+            container: container, notifier: NotificationService(container: container), backup: backup,
+            observer: observer)
     }
 }

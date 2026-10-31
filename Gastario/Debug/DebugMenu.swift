@@ -59,6 +59,7 @@ struct DebugMenu: View {
         // Uno por uno y no `delete(model:)`: el borrado en lote no aplica la cascada a los adjuntos.
         let movements = (try? context.fetch(FetchDescriptor<Movement>())) ?? []
         for movement in movements {
+            SharedCaptureLog.log.record(.deleted(movement, from: .debug))
             context.delete(movement)
         }
         save()

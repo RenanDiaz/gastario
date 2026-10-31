@@ -126,6 +126,8 @@ struct MovementListView: View {
     /// quede una pregunta sobre un movimiento que no existe.
     private func delete(_ movement: Movement) {
         let id = movement.id.uuidString
+        // Bitácora (Fase 7a): distingue "lo borré" de "se perdió".
+        SharedCaptureLog.log.record(.deleted(movement, from: .list))
         context.delete(movement)
         try? context.save()
         UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: [id])

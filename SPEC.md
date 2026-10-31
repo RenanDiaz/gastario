@@ -31,6 +31,7 @@ Huecos encontrados al convertir el intent en fases. Cada uno tiene una decisión
 | C14 | **Confirmado e incorporado a `INTENT.md`.** Abrir un link adjunto con `Link` lo manda a Safari: cada factura deja una pestaña abierta. | Los links adjuntos abren dentro de la app con `SFSafariViewController`, presentado a pantalla completa. El link a Maps del detalle no cambia. | 6 |
 | C15 | **Confirmado e incorporado a `INTENT.md`.** `INTENT.md` no decía qué pasa al tocar la notificación (no "Responder"): el delegate la ignoraba. | Tocar la notificación abre el detalle del movimiento y el editor con el cursor en la nota. El delegate deja el ID en `NotificationRouter`; la lista navega (cerrando lo que esté abierto) y el detalle abre el editor. | 3 |
 | C16 | **Confirmado e incorporado a `INTENT.md`.** `INTENT.md` dejaba las categorías para v2, "derivadas de ~2 meses de notas". Ya existe la fuente real: los topes del presupuesto. Y clasificar solo por categoría no distingue pasamanos, préstamos ni reembolsos. | Sección [v2 — Clasificación](INTENT.md#v2--clasificación): `kind` (8 tipos) aparte de la categoría, reglas por comercio con sugerencia en la notificación y división en partes. Fases 8–10. | 8–10 |
+| C17 | **Confirmado e incorporado a `INTENT.md`.** En la Fase 7 aparecieron pagos que el atajo le pasó a Gastario (la fila está en el CSV viejo) y que no están en el store. `INTENT.md` no pide ningún rastro fuera de SwiftData, así que no hay forma de saber si el intent no corrió, si murió antes de guardar o si el movimiento se borró después. | Bitácora de captura: un archivo JSON Lines en el App Group, escrito sin SwiftData, con una línea por paso de cada invocación de los intents y por cada borrado desde la UI. Se ve y se comparte desde Ajustes. Detalle en la [Fase 7a](#fase-7a--bitácora-de-captura). | 7a |
 | C11 | Un pago de la cuenta personal al propio negocio llega dos veces con la misma `confirmation`; deduplicar solo por `confirmation` pierde uno. | **Confirmado e incorporado a `INTENT.md`.** Clave de deduplicación = `confirmation` + `direction`. | 2 |
 
 ## 3. Arquitectura y convenciones (aplican a todas las fases)
@@ -83,6 +84,7 @@ Por qué dos paquetes y no uno: un agente que corre en la nube (Linux) puede des
 | 5 | Exportar y respaldo | CSV en iCloud Drive sin abrir la app | 11, 21 | 2, 4 |
 | 6 | Adjuntos | Foto, PDF, link y QR por movimiento | 15, 19, 20 | 4 |
 | 7 | Transición | Shortcuts viejos retirados con evidencia | — | 3 + 2–3 semanas |
+| 7a | Bitácora de captura | Una captura perdida dice en qué paso murió o si se borró | — | 2 |
 | 8 | Tipo y categoría (v2) | Clasifico a mano; resumen y CSV respetan el `kind` | 22, 23, 24, 25, 31 (parcial) | 4, 5 |
 | 9 | Reglas y sugerencias (v2) | La segunda compra en un comercio se clasifica con un toque desde la notificación | 26, 27, 28 | 3, 8 |
 | 10 | Dividir movimientos (v2) | Un movimiento repartido en partes con su propia clasificación | 25, 29, 30, 31 | 8 |
@@ -347,7 +349,11 @@ Los cuerpos deben ser **reales**, copiados desde Mail (seleccionar todo el cuerp
 3. Cada discrepancia se clasifica: (a) duplicado en Gastario sin `confirmation` (C3), (b) pago rechazado capturado por el tap, (c) captura perdida en Gastario, (d) captura perdida en el CSV viejo. La herramienta sugiere una clase; la decide la persona.
    - Un pago rechazado (b) aparece en los dos lados, porque el CSV viejo y Gastario corren en el mismo atajo: no sale como discrepancia. Se busca a mano contra el estado de cuenta.
    - Un Yappy que el atajo nunca vio (como el que se perdió por el filtro del trigger, ver [`docs/shortcuts.md`](docs/shortcuts.md#yappy-correo)) falta **en los dos lados** y la comparación no lo detecta. Por eso, además: buscar en Mail los correos de `notificaciones@yappy.com.pa` del período y comparar su cantidad con las filas de Yappy en Gastario. Si falta en los dos, cuenta como (c).
-4. Cualquier (c) bloquea el retiro: se investiga, se corrige, y se extiende el período una semana.
+4. Cualquier (c) bloquea el retiro: se investiga con la [bitácora de captura](#fase-7a--bitácora-de-captura), se corrige, y se extiende el período una semana.
+   - **Primera comparación (28/10, desde el 16/10):** 13 de 15 pagos con tarjeta coinciden. Faltan en Gastario dos que el CSV viejo sí tiene, ninguno borrado a mano: (c).
+     - 22/10 18:02, M/S Betty, $3.10. Causa probable: el perfil de firma de la cuenta gratis vence a los 7 días y la app deja de abrir, también para el intent. El atajo escribe el Append y falla en Gastario. Mientras se firme con cuenta gratis, hay que reinstalar antes del vencimiento; en la bitácora este caso se ve como "ningún `received`".
+     - 18/10 15:40, con comercio, monto y tarjeta vacíos. Sin explicar: es el caso para el que existe la Fase 7a.
+     - Además, el 25/10 (Rey David, $18.78, pagado con el iPhone) falta en los dos lados y se registró a mano: el atajo no corrió o se detuvo antes del Append. La bitácora no lo ve. Sospechosa: `Current Location`, la primera acción del atajo, que lo detiene si falla.
 5. Con cero (c): quitar el `Append to Text File` de ambos atajos. Archivar los CSVs viejos como insumo para la importación de v1.1.
 
 **Gate de salida.**
@@ -355,6 +361,79 @@ Los cuerpos deben ser **reales**, copiados desde Mail (seleccionar todo el cuerp
 - [ ] Conteo de correos de Yappy en Mail del período igual al de Gastario.
 - [ ] Appends retirados.
 - [ ] Decisión registrada sobre v1.1: importar CSVs, Share Extension, y qué formatos reales de `Amount` aparecieron.
+
+---
+
+## Fase 7a — Bitácora de captura
+
+**Objetivo.** Que una captura perdida deje evidencia de dónde murió (C17). Hoy, si el atajo llamó a Gastario y el movimiento no está, no hay forma de saber si el intent no corrió, si el proceso murió antes de guardar, si el store lanzó o si el movimiento se borró después. La bitácora no arregla nada: da el dato para arreglar la causa real. Bloquea el cierre de la Fase 7, porque sin ella una (c) no se puede investigar.
+
+**Por qué fuera de SwiftData.** Si el problema está en abrir o escribir el store, una bitácora en el store muere con él. Es el mismo argumento de C4.
+
+**Alcance.**
+- **Archivo.** `<App Group>/Logs/capture-YYYY-MM.jsonl`, con el mes en `America/Panama`. Una línea JSON por evento, con las claves ordenadas. Se conservan el mes actual y los dos anteriores, y lo más viejo se borra al abrir la app. Tamaño esperado: < 1 MB al mes.
+- **Escritura.** `CaptureLog` en `GastarioCore/Diagnostics/`, solo con Foundation. Cada evento se escribe completo de inmediato (abrir en modo append, una sola escritura, `synchronize()`, cerrar): si iOS mata el proceso, lo escrito antes ya está en disco. **La bitácora nunca hace fallar ni retrasa una captura:** sus errores se tragan y solo van a OSLog (principio 1).
+- **Campos comunes.** `t` (ISO 8601 con milisegundos y offset de Panamá), `pid`, `ev` (el evento) e `inv` (UUID de la invocación; no lo llevan `process` ni `deleted`).
+- **Eventos.**
+
+| `ev` | Quién lo escribe | Cuándo | Campos propios |
+|---|---|---|---|
+| `process` | `CaptureLog` | En la primera escritura de cada proceso | `version`, `build` |
+| `received` | El intent | Primera línea de `perform()`, **antes** de tocar `SharedModelContainer` (su inicialización perezosa es sospechosa) | `src`. Tarjeta: los 6 parámetros tal como llegaron, con `null` distinto de `""`. Yappy: `contentLength` y `contentSHA256` (el correo sigue en Mail y el cuerpo crudo ya va al store) |
+| `rawSaved` | `CaptureService`, vía observador | Después del `save()` del paso 1 | `movementID` |
+| `saved` | `CaptureService`, vía observador | Después del paso 4, o después de borrar un duplicado | `movementID`, `outcome` (`created` o `duplicate` con `existing`), `parseStatus`, `parseIssues` |
+| `error` | El intent | En un `catch` alrededor de la captura, antes de relanzar | `message`, `type` |
+| `done` | El intent | Justo antes de `return .result()` | — |
+| `deleted` | La app | Al borrar un movimiento: swipe en la lista y "Borrar todo" del menú Debug | `movementID`, `src`, `amount`, `counterparty`, `capturedAt`, `from` (`list` o `debug`) |
+
+- **Observador.** El protocolo `CaptureObserver` (`rawSaved(id:)`, `saved(id:outcome:status:issues:)`) se inyecta en `CaptureService` como `MovementNotifier`, con `NoopCaptureObserver` por defecto. El intent crea uno por invocación, con su `inv`. El pipeline no cambia de orden, solo avisa.
+- **Lectura.** `CaptureLogReader` agrupa los eventos por `inv` y clasifica cada invocación según la tabla de interpretación (abajo). Es una función pura sobre las líneas; una línea que no se puede leer se cuenta y se salta.
+- **Ajustes → "Bitácora de captura".** Muestra cuántas invocaciones hubo en los últimos 30 días y cuántas no terminaron en `done`. Las que no terminaron se listan con hora, fuente, comercio y monto crudos, y el último evento que alcanzaron. Abajo, los borrados del mismo período. Botón **"Compartir bitácora"** (`ShareLink` con los `.jsonl`), para pasarlos al agente igual que los CSVs.
+
+**Interpretación** (para una fila que está en el CSV viejo y no en Gastario).
+
+| Lo que dice la bitácora | Dónde murió |
+|---|---|
+| Ningún `received` cerca de esa hora | El intent no se invocó: Atajos falló al llamar la acción después del Append |
+| `received`, sin `rawSaved` ni `error` | El proceso murió antes del primer guardado: abriendo el store o porque iOS lo mató |
+| `received` + `error` | El store lanzó. El mensaje dice qué pasó |
+| `rawSaved`, sin `saved` | Murió entre el parseo y el segundo guardado. El crudo **debería** estar en el store como `failed`; si no está, el primer guardado no fue durable |
+| `saved`, sin `done` | Murió notificando o respaldando. El movimiento existe |
+| `done` + `deleted` del mismo `movementID` | Se borró a mano |
+| `done`, sin `deleted` | Desapareció del store después de guardarse: bug grave, se investiga aparte |
+
+Un `pid` distinto entre dos eventos de la misma invocación no debería pasar. Si pasa, iOS relanzó el proceso a mitad de la captura.
+
+**Fuera de alcance.**
+- Arreglar la causa: eso sale de la evidencia, en su propio PR.
+- Lo que pasa en Atajos antes de llamar al intent: la bitácora no lo ve. Un pago que falta en los dos lados sigue saliendo de la comparación del paso 3 de la Fase 7.
+- Registrar notificaciones y respuestas.
+- Que `Tools/TransitionReport` lea la bitácora. Se agrega si cruzarla a mano resulta lento.
+
+**Entregables.**
+- `Packages/GastarioCore/Sources/GastarioCore/Diagnostics/{CaptureLog,CaptureLogEvent,CaptureLogEvent+Movement,CaptureLogReader,CaptureObserver}.swift`
+- `CaptureService`: parámetro `observer` en `init` y las dos llamadas. Nada más cambia.
+- `LogCardMovementIntent` y `LogYappyEmailIntent`: `received`, `error` y `done`, y el observador.
+- `MovementListView.delete` y `DebugMenu`: `deleted`.
+- `GastarioApp`: la retención al abrir.
+- `SettingsView`: la sección "Bitácora de captura".
+
+**Pruebas automáticas** (`GastarioCore`, macOS).
+- Escribir varios eventos produce una línea JSON válida por evento, y `process` va una sola vez por instancia.
+- El archivo del mes sigue `America/Panama`: el 31/10 a las 23:30 de Panamá (1/11 en UTC) va a `capture-2026-10.jsonl`.
+- Una ruta en la que no se puede escribir no lanza.
+- Tarjeta con `merchant` en `nil` y `amount` en `""`: la línea conserva la diferencia.
+- `CaptureService` con un observador espía: `rawSaved` antes que `saved`, con el mismo ID. Un Yappy duplicado da `saved` con `outcome = duplicate` y el ID existente.
+- `CaptureLogReader`: un caso por fila de la tabla de interpretación, y una línea corrupta que se salta sin perder las demás.
+- Retención: con archivos de 4 meses, quedan los 3 más recientes y no se toca nada que no sea `capture-*.jsonl`.
+
+**Gate de salida.**
+- [ ] `scripts/verify.sh` verde en el job `macos`.
+- [ ] 📱 Pagar con Apple Pay sin abrir la app → en Ajustes la invocación aparece completa. En el archivo compartido están `received`, `rawSaved`, `saved` y `done` con el mismo `inv`.
+- [ ] 📱 Recibir un Yappy y correr el atajo otra vez sobre el mismo correo → dos invocaciones completas, la segunda con `outcome = duplicate`.
+- [ ] 📱 Borrar un movimiento desde la lista → aparece en "Borrados".
+- [ ] 📱 "Compartir bitácora" entrega los `.jsonl`.
+- [ ] Desde aquí, cada (c) de la Fase 7 se anota en `docs/transition-report.md` con la fila de la tabla de interpretación que le corresponde.
 
 ---
 

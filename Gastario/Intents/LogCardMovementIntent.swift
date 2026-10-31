@@ -20,12 +20,28 @@ struct LogCardMovementIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult {
+        // Bitácora (Fase 7a): lo primero, antes de tocar el store, y con los parámetros tal
+        // como llegaron (`nil` distinto de `""`).
+        let log = SharedCaptureLog.log
+        let invocation = UUID()
+        log.record(.receivedCard(invocation, inputs: CardParams(
+            merchant: merchant, amount: amount, cardName: cardName,
+            city: city, latitude: latitude, longitude: longitude)))
+
         let inputs = CardRawInputs(
             merchant: merchant ?? "", amount: amount ?? "", cardName: cardName ?? "",
             city: city, latitude: latitude, longitude: longitude)
-        // Solo lanza si el store no responde: un fallo de parseo se guarda igual (principio 1).
-        let outcome = try await SharedModelContainer.captureService().captureCard(inputs)
-        Logger.app.info("Tarjeta capturada: \(String(describing: outcome), privacy: .public)")
+        do {
+            // Solo lanza si el store no responde: un fallo de parseo se guarda igual (principio 1).
+            let outcome = try await SharedModelContainer
+                .captureService(observer: CaptureLogObserver(log: log, invocation: invocation))
+                .captureCard(inputs)
+            Logger.app.info("Tarjeta capturada: \(String(describing: outcome), privacy: .public)")
+        } catch {
+            log.record(.error(invocation, error))
+            throw error
+        }
+        log.record(.done(invocation))
         return .result()
     }
 }

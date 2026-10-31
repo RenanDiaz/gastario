@@ -197,7 +197,7 @@ End Repeat
     - Escanear QR con `DataScannerViewController` → se guarda como `link`.
     - Ver con `QuickLookPreview`; los links abren dentro de la app con `SFSafariViewController`, sin dejar pestañas en Safari.
 - **Resumen** del mes: total salidas, total entradas, neto.
-- **Ajustes:** "Re-parsear todo", fecha del último auto-export, "Exportar ahora".
+- **Ajustes:** "Re-parsear todo", fecha del último auto-export, "Exportar ahora" y la bitácora de captura (ver Respaldo).
 
 ## Respaldo
 
@@ -208,6 +208,7 @@ End Repeat
 - **Transición:** durante las primeras 2–3 semanas, los Shortcuts viejos siguen escribiendo sus CSVs **en paralelo**, dentro del mismo atajo:
   - El `Append to Text File` va **antes** de la llamada al intent. Si el intent falla, el atajo se detiene y el CSV tiene que haberse escrito ya.
   - Al final del período, comparar conteos por día entre ambos. Solo entonces se retiran los Append.
+- **Bitácora de captura:** cada invocación de los intents deja una línea por paso (recibido, crudo guardado, guardado, error, terminado) en un archivo del App Group, **fuera de SwiftData**, y cada borrado hecho desde la app también. Si una captura se pierde, dice en qué paso murió o si se borró a mano. Nunca hace fallar una captura. Se ve y se comparte desde Ajustes; se conservan 3 meses.
 
 ## Exportar CSV
 

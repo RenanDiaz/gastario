@@ -19,18 +19,21 @@ public final class CaptureService {
     private let parser: any CaptureParser
     private let notifier: any MovementNotifier
     private let backup: any BackupTrigger
+    private let observer: any CaptureObserver
     private let logger = Logger(subsystem: "com.renandiaz.Gastario", category: "capture")
 
     public init(
         container: ModelContainer,
         parser: any CaptureParser = DefaultCaptureParser(),
         notifier: any MovementNotifier = NoopNotifier(),
-        backup: any BackupTrigger = NoopBackupTrigger()
+        backup: any BackupTrigger = NoopBackupTrigger(),
+        observer: any CaptureObserver = NoopCaptureObserver()
     ) {
         self.container = container
         self.parser = parser
         self.notifier = notifier
         self.backup = backup
+        self.observer = observer
     }
 
     /// Solo lanza si el store no responde; un fallo de parseo se guarda como `partial`/`failed`.
@@ -44,6 +47,7 @@ public final class CaptureService {
         movement.rawInputs = Self.json(inputs)
         context.insert(movement)
         try context.save()
+        observer.rawSaved(movementID: movement.id)
 
         // 2–3.
         do {
@@ -54,6 +58,9 @@ public final class CaptureService {
 
         // 4.
         try context.save()
+        observer.saved(
+            movementID: movement.id, outcome: .created(movement.id),
+            status: movement.parseStatus, issues: movement.parseIssues)
 
         await finish(movement.id)
         return .created(movement.id)
@@ -70,6 +77,7 @@ public final class CaptureService {
         movement.rawContent = content
         context.insert(movement)
         try context.save()
+        observer.rawSaved(movementID: movement.id)
 
         // 2–3.
         do {
@@ -81,14 +89,20 @@ public final class CaptureService {
         // Deduplicación por confirmación + dirección (SPEC §2, C11). Sin confirmación o sin
         // dirección no hay dedup (C3).
         if let existing = try duplicate(of: movement, in: context) {
+            // Se leen antes de borrar: un modelo borrado ya no se puede leer.
+            let (id, status, issues) = (movement.id, movement.parseStatus, movement.parseIssues)
             context.delete(movement)
             try context.save()
+            observer.saved(movementID: id, outcome: .duplicate(existing: existing), status: status, issues: issues)
             await backup.runIfDue()
             return .duplicate(existing: existing)
         }
 
         // 4.
         try context.save()
+        observer.saved(
+            movementID: movement.id, outcome: .created(movement.id),
+            status: movement.parseStatus, issues: movement.parseIssues)
 
         await finish(movement.id)
         return .created(movement.id)
