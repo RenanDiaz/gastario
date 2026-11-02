@@ -18,6 +18,7 @@ App iOS que registra cada pago con Apple Pay y cada Yappy, y permite anotar en q
 | 2. Captura ([`docs/shortcuts.md`](docs/shortcuts.md)) | Implementada. 📱 Verificado: una compra con Apple Pay quedó guardada con monto, comercio, tarjeta y ubicación. Faltan el resto de las verificaciones 📱 del gate |
 | 3. Notificaciones | Implementada. 📱 Verificado: AC-8 (responder con la app cerrada guarda la nota). Falta: AC-1 con un pago, AC-7/12, que un duplicado no notifique y tocar la notificación (C15; corregido el cierre al abrirse, pendiente de verificar en el iPhone) |
 | 4. Revisión y edición | Implementada. Fixtures comparados con un cuerpo crudo real. 📱 Verificado: borrar. Falta: AC-9, AC-13, AC-14, AC-18 |
+| 4a. Búsqueda y período ([`SPEC.md`](SPEC.md#fase-4a--búsqueda-y-período)) | Especificada; C19 pendiente de confirmar. Buscar por comercio, nota o monto, y filtrar por mes o rango |
 | 5. Exportar y respaldo (iCloud Drive) | Implementada. 📱 Verificado: AC-11 ("Exportar ahora" abre en Numbers). Falta: AC-21 (auto-export, requiere cuenta pagada) y export fallido |
 | 6. Adjuntos (foto, PDF, link, QR de factura) | Implementada. 📱 Verificado: QR, PDF, foto y borrar un adjunto. Falta: AC-19 (PDF de 5 MB tras reabrir), AC-15 completo y captura durante el flujo de adjuntar |
 | 7. Transición | En curso: período en paralelo. Herramienta de comparación lista ([cómo usarla](#transición-fase-7)). Primera comparación (28/10): faltan en Gastario 2 pagos con tarjeta que el CSV viejo sí tiene ([detalle](SPEC.md#fase-7--transición-operativa)). No se puede cerrar hasta investigarlos con la Fase 7a |
@@ -29,7 +30,7 @@ App iOS que registra cada pago con Apple Pay y cada Yappy, y permite anotar en q
 | S1. Spike: correos de factura | Listo para arrancar: atajo de censo en [`docs/shortcuts.md`](docs/shortcuts.md#diagnóstico-de-facturas-spike-s1-temporal), bitácora en [`docs/spikes/invoice-emails.md`](docs/spikes/invoice-emails.md). En paralelo con la Fase 7 |
 | 11. Facturas por correo (v1.1) | Especificada, sujeta al resultado de S1 |
 
-Preguntas abiertas ([§5](SPEC.md#5-preguntas-abiertas-bloquean-la-fase-indicada)): Q6 (contrapartes reales de tarjeta, bloquea la Fase 9), Q7 (cuenta de correo de las facturas, bloquea S1) y Q8 (asignación automática de facturas, bloquea la Fase 11). Detalle de cada fase en el [mapa de fases](SPEC.md#mapa-de-fases).
+Cambio propuesto pendiente de confirmar: [C19](SPEC.md#2-cambios-propuestos-a-intentmd) (búsqueda y período, Fase 4a). Preguntas abiertas ([§5](SPEC.md#5-preguntas-abiertas-bloquean-la-fase-indicada)): Q6 (contrapartes reales de tarjeta, bloquea la Fase 9), Q7 (cuenta de correo de las facturas, bloquea S1) y Q8 (asignación automática de facturas, bloquea la Fase 11). Detalle de cada fase en el [mapa de fases](SPEC.md#mapa-de-fases).
 
 ## Requisitos
 
