@@ -24,7 +24,7 @@ Huecos encontrados al convertir el intent en fases. Cada uno tiene una decisión
 | C6 | Formato de fechas en CSV no definido. | ISO 8601 con offset de Panamá (`2026-10-04T08:31:00-05:00`). Numbers lo reconoce. Sin BOM. | 5 |
 | C7 | Un QR que no contenga URL no cabe en `kind: link`. | Se rechaza con mensaje "El QR no contiene un link". Los QR de factura electrónica de la DGI son URLs; si aparece un caso real distinto, se amplía en v1.1. | 6 |
 | C8 | Imágenes sin límite inflan el almacenamiento externo. | Fotos se guardan como JPEG calidad 0.8, lado mayor máximo 2048 px. PDFs sin tocar. | 6 |
-| C9 | El resumen mensual no dice qué mes ni qué zona horaria. | Mes calendario actual en `America/Panama`. Neto = entradas − salidas. Incluye todos los `parseStatus`. | 4 |
+| C9 | El resumen mensual no dice qué mes ni qué zona horaria. | Mes calendario actual en `America/Panama`. Neto = entradas − salidas. Incluye todos los `parseStatus`. Con un período distinto de "Todo", el resumen es de ese período ([C19](#fase-4a--búsqueda-y-período)). | 4 |
 | C10 | Los correos reales muestran formatos que el intent no listaba: `Content` llega en HTML, existe "Pagaste por Yappy / Pagado a" y llegan correos de Yappy Comercial. | **Confirmado e incorporado a `INTENT.md`.** El parser convierte HTML a texto sin WebKit; "Pagaste" → `outflow`; Yappy Comercial → `inflow`. | 1 |
 | C12 | **Confirmado e incorporado a `INTENT.md`.** `INTENT.md` decía iOS 27, pero los runners de GitHub (`macos-26`) solo traen Xcode 26.x con SDK de iOS 26.5; con deployment target 27 el job `macos` no puede compilar la app. Ninguna API que pide el intent es exclusiva de iOS 27. | Deployment target **iOS 26.0**, compilado con Xcode 26.x en CI. La app corre igual en iOS 27 y se puede compilar localmente con Xcode 27. Se sube a 27 cuando GitHub ofrezca Xcode 27. | 0 |
 | C13 | **Confirmado e incorporado a `INTENT.md`.** `INTENT.md` no definía el texto de la notificación para una tarjeta `failed` (el parser lanzó) ni para un Yappy `partial` sin contraparte, ni los títulos. | Tarjeta `failed`: "No pude leer un pago con tarjeta, revísalo en la app." Sin contraparte: la pregunta sin el "en …" ("¿En qué gastaste $49.06?"). Títulos: "Gasto", "Ingreso", "Revisar movimiento". | 3 |
@@ -33,7 +33,7 @@ Huecos encontrados al convertir el intent en fases. Cada uno tiene una decisión
 | C16 | **Confirmado e incorporado a `INTENT.md`.** `INTENT.md` dejaba las categorías para v2, "derivadas de ~2 meses de notas". Ya existe la fuente real: los topes del presupuesto. Y clasificar solo por categoría no distingue pasamanos, préstamos ni reembolsos. | Sección [v2 — Clasificación](INTENT.md#v2--clasificación): `kind` (8 tipos) aparte de la categoría, reglas por comercio con sugerencia en la notificación y división en partes. Fases 8–10. | 8–10 |
 | C17 | **Confirmado e incorporado a `INTENT.md`.** En la Fase 7 aparecieron pagos que el atajo le pasó a Gastario (la fila está en el CSV viejo) y que no están en el store. `INTENT.md` no pide ningún rastro fuera de SwiftData, así que no hay forma de saber si el intent no corrió, si murió antes de guardar o si el movimiento se borró después. | Bitácora de captura: un archivo JSON Lines en el App Group, escrito sin SwiftData, con una línea por paso de cada invocación de los intents y por cada borrado desde la UI. Se ve y se comparte desde Ajustes. Detalle en la [Fase 7a](#fase-7a--bitácora-de-captura). | 7a |
 | C18 | **Confirmado e incorporado a `INTENT.md`.** Con la cuenta gratis (Personal Team) el perfil de aprovisionamiento vence a los 7 días. Vencido, iOS no abre la app ni para correr los intents: el atajo de tarjeta escribe el Append del CSV viejo y falla al llamar a Gastario. Así se perdió M/S Betty el 22/10 ([Fase 7](#fase-7--transición-operativa)). `INTENT.md` no prevé ningún aviso, y la bitácora (C17) no lo ve porque el proceso ni arranca. Viola el principio 1 sin dejar rastro. | Leer `ExpirationDate` de `embedded.mobileprovision` dentro del bundle. Ajustes muestra "La app vence el …", en rojo con menos de 48 h, y con menos de 48 h la lista también muestra un aviso arriba. Notificación local 24 h antes, reprogramada cada vez que se abre la app. Sin ese archivo (App Store, TestFlight, simulador) no se muestra ni se programa nada. Detalle en la [Fase 7b](#fase-7b--aviso-de-vencimiento-de-la-firma). | 7b |
-| C19 | La lista ya es larga y `INTENT.md` solo pide los filtros "Sin nota" y "Requiere revisión": no hay forma de encontrar un movimiento por comercio, nota o monto, ni de ver un período. El resumen está fijo al mes en curso (C9). | Búsqueda en la lista (contraparte, nota, mensaje de Yappy, tarjeta, ciudad y monto) y filtro de período (Todo, Este mes, Mes anterior, Rango). Se combinan con el filtro segmentado. El resumen sigue al período; la búsqueda no lo cambia, pero muestra sus propios totales. Nada se guarda entre lanzamientos. Detalle en la [Fase 4a](#fase-4a--búsqueda-y-período). | 4a |
+| C19 | **Confirmado e incorporado a `INTENT.md`.** La lista ya es larga y `INTENT.md` solo pide los filtros "Sin nota" y "Requiere revisión": no hay forma de encontrar un movimiento por comercio, nota o monto, ni de ver un período. El resumen está fijo al mes en curso (C9). | Búsqueda en la lista (contraparte, nota, mensaje de Yappy, tarjeta, ciudad y monto) y filtro de período (Todo, Este mes, Mes anterior, Rango). Se combinan con el filtro segmentado. El resumen sigue al período; la búsqueda no lo cambia, pero muestra sus propios totales. Nada se guarda entre lanzamientos. Detalle en la [Fase 4a](#fase-4a--búsqueda-y-período). | 4a |
 | C11 | Un pago de la cuenta personal al propio negocio llega dos veces con la misma `confirmation`; deduplicar solo por `confirmation` pierde uno. | **Confirmado e incorporado a `INTENT.md`.** Clave de deduplicación = `confirmation` + `direction`. | 2 |
 
 ## 3. Arquitectura y convenciones (aplican a todas las fases)
@@ -83,7 +83,7 @@ Por qué dos paquetes y no uno: un agente que corre en la nube (Linux) puede des
 | 2 | Captura | Toco la tarjeta o llega un Yappy → aparece en la lista | 1, 5, 6, 10, 12 | 0, 1 |
 | 3 | Notificaciones | Llega la pregunta y respondo sin abrir la app | 1, 7, 8, 9, 12 | 2 |
 | 4 | Revisión y edición | Filtros, detalle editable, re-parseo, entrada manual, borrar | 9, 13, 14, 15, 17, 18 | 3 |
-| 4a | Búsqueda y período | Encuentro un movimiento por comercio, nota o monto, y veo un mes o rango con sus totales | — (propuestos AC-32…34) | 4 |
+| 4a | Búsqueda y período | Encuentro un movimiento por comercio, nota o monto, y veo un mes o rango con sus totales | 32, 33, 34 | 4 |
 | 5 | Exportar y respaldo | CSV en iCloud Drive sin abrir la app | 11, 21 | 2, 4 |
 | 6 | Adjuntos | Foto, PDF, link y QR por movimiento | 15, 19, 20 | 4 |
 | 7 | Transición | Shortcuts viejos retirados con evidencia | — | 3 + 2–3 semanas |
@@ -295,12 +295,12 @@ Los cuerpos deben ser **reales**, copiados desde Mail (seleccionar todo el cuerp
   - Varias palabras: cada una tiene que aparecer en algún campo (Y), en cualquier orden. `"super 99 leche"` encuentra un Super 99 con nota "leche".
   - **Monto.** Un término que sea solo dígitos y a lo sumo un punto, con `$` opcional al inicio (`49`, `49.06`, `$4.5`), además de buscarse como texto coincide si el monto, escrito con dos decimales y sin separador de miles (`49.06`), **empieza** con él. `49` encuentra $49.06 y $490.00; `49.0` encuentra $49.06 y no $49.60. Un `partial` con monto `0` no coincide con ningún término numérico (en la lista se ve como "—", Q5).
   - Espacios al inicio y al final se ignoran; búsqueda vacía = sin búsqueda.
-- **Período.** Menú en la barra (ícono de calendario, con el período activo como título cuando no es "Todo"): "Todo" (por defecto), "Este mes", "Mes anterior", "Rango…".
+- **Período.** Menú en la barra (ícono de calendario, que se marca cuando el período no es "Todo"; el título del resumen dice cuál es): "Todo" (por defecto), "Este mes", "Mes anterior", "Rango…".
   - Meses calendario en `America/Panama`, igual que C9.
   - "Rango…" abre una hoja con "Desde" y "Hasta" (solo fecha). Días completos en Panamá, ambos incluidos: desde el inicio de "Desde" hasta antes del inicio del día siguiente a "Hasta". "Hasta" no puede ser anterior a "Desde" (el `DatePicker` lo limita). Por defecto, el mes en curso.
   - Se filtra por `occurredAt`, como el agrupado por día.
 - **Composición.** Período **y** búsqueda **y** filtro segmentado. Las cuentas del segmentado se calculan sobre período + búsqueda: "Sin nota (3)" significa 3 de lo que estoy viendo.
-- **Resumen.** Con "Todo", igual que hoy: mes en curso (C9). Con otro período, el resumen es de ese período y su título lo dice ("Septiembre 2026", "1 sep – 15 oct 2026"). La búsqueda y el segmentado **no** cambian el resumen: es "cuánto entró y salió en el período", no de un subconjunto.
+- **Resumen.** Con "Todo", igual que hoy: mes en curso (C9). Con otro período, el resumen es de ese período y su título lo dice ("Septiembre de 2026", "1 sep – 15 oct 2026"; la abreviatura del mes la da el sistema). La búsqueda y el segmentado **no** cambian el resumen: es "cuánto entró y salió en el período", no de un subconjunto.
 - **Totales de la búsqueda.** Con búsqueda activa, una fila arriba de los resultados: "N movimientos · Salidas $X · Entradas $Y", sobre lo visible (período + búsqueda + segmentado). Responde "cuánto gasté en Super 99" sin tocar el resumen.
 - **Vacío.** Con búsqueda: `ContentUnavailableView.search(text:)`. Sin búsqueda, los títulos actuales; si el período está vacío, "Sin movimientos en este período".
 - **Estado.** Nada se persiste: al relanzar, "Todo" y sin búsqueda. Abrir desde una notificación (C15) no limpia búsqueda ni período; el detalle abre igual porque navega por `path`, aunque el movimiento no esté en lo visible.
@@ -315,7 +315,7 @@ Los cuerpos deben ser **reales**, copiados desde Mail (seleccionar todo el cuerp
 **Diseño.** La lógica vive en `GastarioCore/Presentation`, pura y sin SwiftData, para probarla sin store:
 - `MovementSearch(text:)`: tokeniza y expone `matches(fields: [String?], amount: Decimal) -> Bool`.
 - `DatePeriod`: `.all`, `.thisMonth`, `.previousMonth`, `.range(from: Date, to: Date)`; `interval(now:) -> DateInterval?` (`nil` = sin límite) y `title(now:)`.
-- `MovementPresentation.summary(_:in:…)`: generaliza `monthlySummary` a cualquier `DateInterval`; `monthlySummary` queda como caso particular para no romper sus pruebas.
+- `MovementPresentation.summary(_:in:…)`: generaliza `monthlySummary` a cualquier `DateInterval`; `monthlySummary` queda como caso particular para no romper sus pruebas. `totals(_:…)` suma sin mirar la fecha, para los totales de la búsqueda.
 - La vista solo arma los campos de `Movement` y compone.
 
 **Entregables.**
@@ -330,7 +330,7 @@ Los cuerpos deben ser **reales**, copiados desde Mail (seleccionar todo el cuerp
 - Rango: "Hasta" incluye su último minuto (23:59 en Panamá) y excluye las 00:00 del día siguiente; rango de un solo día.
 - Resumen por intervalo: con el intervalo del mes da lo mismo que `monthlySummary`.
 
-**Criterios de aceptación propuestos** (se agregan a `INTENT.md` al confirmar C19).
+**Criterios de aceptación** (`INTENT.md`, AC-32 a AC-34).
 - **AC-32. Buscar.** Escribo "cafe" → aparecen los movimientos cuyo comercio o nota dice "Café", y ningún otro.
 - **AC-33. Buscar por monto.** Escribo "49.06" → aparece el movimiento de $49.06.
 - **AC-34. Período.** Elijo "Mes anterior" → solo hay movimientos de ese mes en Panamá, el resumen dice ese mes y sus totales coinciden con la suma del CSV de ese mes.
@@ -819,6 +819,9 @@ Un `pid` distinto entre dos eventos de la misma invocación no debería pasar. S
 | 29 | División que no suma | F10 | — |
 | 30 | Re-parseo con división | F10 | — |
 | 31 | Export v2 | F8, F10 (golden) | F8, F10 |
+| 32 | Buscar | F4a | F4a |
+| 33 | Buscar por monto | F4a | F4a |
+| 34 | Período | F4a | F4a |
 
 ## 5. Preguntas abiertas (bloquean la fase indicada)
 

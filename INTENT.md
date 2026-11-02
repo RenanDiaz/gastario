@@ -21,7 +21,7 @@ Hoy esto vive en dos automatizaciones de Shortcuts que escriben CSVs en iCloud D
 - App iOS (deployment target 26.0, se usa en iOS 27), SwiftUI + SwiftData + App Intents + UserNotifications. Solo local, sin backend.
 - Dos App Intents invocables desde Shortcuts, ejecutados en segundo plano.
 - Notificación local con respuesta de texto por cada movimiento capturado.
-- Lista, filtros "Sin nota" y "Requiere revisión", detalle editable, exportar CSV.
+- Lista, filtros "Sin nota" y "Requiere revisión", búsqueda y filtro por período, detalle editable, exportar CSV.
 - Entrada manual de movimientos (efectivo, tarjeta física, taps que no dispararon la automatización).
 - Edición de monto, contraparte y fecha. Borrado de movimientos.
 - Re-parsear un movimiento o todos.
@@ -186,6 +186,8 @@ End Repeat
   - Botón "+" para entrada manual.
   - Swipe para borrar, con confirmación.
 - **Filtros:** "Sin nota" y "Requiere revisión" (`parseStatus != ok`).
+- **Búsqueda:** por contraparte, nota, mensaje de Yappy, tarjeta, ciudad y monto, sin distinguir mayúsculas ni acentos. No busca en el cuerpo crudo. Con búsqueda, una fila con cuántos movimientos coinciden y sus salidas y entradas.
+- **Período:** "Todo" (por defecto), "Este mes", "Mes anterior" o un rango de días, en `America/Panama`. Se combina con la búsqueda y los filtros. Nada de esto se recuerda al cerrar la app.
 - **Detalle:**
   - Todos los campos. Link a Maps si hay coordenadas. Cuerpo crudo (Yappy).
   - Monto, contraparte y fecha editables. Editar un campo lo agrega a `editedFields`. Si el movimiento era `partial` y quedan resueltos los campos faltantes, pasa a `ok`.
@@ -197,7 +199,7 @@ End Repeat
     - Link con campo de texto validado.
     - Escanear QR con `DataScannerViewController` → se guarda como `link`.
     - Ver con `QuickLookPreview`; los links abren dentro de la app con `SFSafariViewController`, sin dejar pestañas en Safari.
-- **Resumen** del mes: total salidas, total entradas, neto.
+- **Resumen** del período: total salidas, total entradas, neto. Con "Todo", el mes en curso. La búsqueda y los filtros no lo cambian.
 - **Ajustes:** fecha de vencimiento de la firma (ver abajo), "Re-parsear todo", fecha del último auto-export, "Exportar ahora" y la bitácora de captura (ver Respaldo).
 - **Vencimiento de la firma.** Firmada con una cuenta gratis, la app vence a los 7 días de instalarla y después no abre, ni siquiera para los intents: las capturas se pierden. Si el bundle trae `embedded.mobileprovision`, Ajustes muestra "La app vence el …", en rojo con menos de 48 h, y con menos de 48 h la lista avisa arriba del resumen. En App Store y TestFlight no se muestra nada.
 
@@ -354,6 +356,12 @@ La lista es fija en el código (enums con `String` raw value). Cambiarla es un c
 29. **División que no suma.** Al guardar, se rechaza una división cuyas partes no suman el monto.
 30. **Re-parseo con división.** Si un re-parseo cambia el monto de un movimiento dividido, las partes se conservan y el movimiento aparece en "Requiere revisión".
 31. **Export v2.** El CSV trae `id`, `kind`, `category`, `subcategory` y `splitGroupId`; un movimiento dividido en 2 sale como 2 filas con el mismo `splitGroupId` y montos que suman el original.
+
+### Búsqueda y período
+
+32. **Buscar.** Escribo "cafe" → aparecen los movimientos cuyo comercio o nota dice "Café", y ningún otro.
+33. **Buscar por monto.** Escribo "49.06" → aparece el movimiento de $49.06.
+34. **Período.** Elijo "Mes anterior" → solo hay movimientos de ese mes en Panamá, el resumen dice ese mes y sus totales coinciden con la suma del CSV de ese mes.
 
 ## Pruebas
 
