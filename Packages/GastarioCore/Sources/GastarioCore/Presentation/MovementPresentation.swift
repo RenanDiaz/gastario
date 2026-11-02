@@ -69,12 +69,27 @@ public enum MovementPresentation {
         _ items: [Item], containing date: Date,
         amount: (Item) -> Decimal, direction: (Item) -> Direction, occurredAt: (Item) -> Date
     ) -> MonthlySummary {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = timeZone
-        guard let month = calendar.dateInterval(of: .month, for: date) else { return MonthlySummary() }
+        guard let month = DatePeriod.thisMonth.interval(now: date) else { return MonthlySummary() }
+        return summary(items, in: month, amount: amount, direction: direction, occurredAt: occurredAt)
+    }
+
+    /// Resumen de un intervalo semiabierto: el final ya no cuenta (el final de un mes es el primer
+    /// instante del siguiente). Fase 4a: el resumen sigue al período.
+    public static func summary<Item>(
+        _ items: [Item], in interval: DateInterval,
+        amount: (Item) -> Decimal, direction: (Item) -> Direction, occurredAt: (Item) -> Date
+    ) -> MonthlySummary {
+        totals(
+            items.filter { occurredAt($0) >= interval.start && occurredAt($0) < interval.end },
+            amount: amount, direction: direction)
+    }
+
+    /// Salidas y entradas de todos los `items`, sin mirar la fecha (totales de la búsqueda).
+    public static func totals<Item>(
+        _ items: [Item], amount: (Item) -> Decimal, direction: (Item) -> Direction
+    ) -> MonthlySummary {
         var summary = MonthlySummary()
-        // Semiabierto: el final del intervalo ya es el primer instante del mes siguiente.
-        for item in items where occurredAt(item) >= month.start && occurredAt(item) < month.end {
+        for item in items {
             switch direction(item) {
             case .outflow: summary.outflow += amount(item)
             case .inflow: summary.inflow += amount(item)
